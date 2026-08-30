@@ -9,7 +9,7 @@ import threading
 from datetime import datetime
 from urllib.parse import urlparse
 
-import requests
+from urllib.request import Request, urlopen
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.metrics import dp
@@ -113,27 +113,34 @@ class DownloaderLayout(BoxLayout):
     def download_media(self, url, caption):
         try:
             os.makedirs(DOWNLOAD_DIR, exist_ok=True)
-            headers = {"User-Agent": "Mozilla/5.0 (Android)"}
-            response = requests.get(url, headers=headers, stream=True,
-                                    timeout=30, allow_redirects=True)
-            response.raise_for_status()
+            request = Request(
+                url,
+                headers={"User-Agent": "Mozilla/5.0 (Android)"}
+            )
 
-            content_type = response.headers.get("Content-Type", "")
-            if not (content_type.startswith("image/") or
-                    content_type.startswith("video/")):
-                raise ValueError(
-                    "URL bukan direct URL foto/video. "
-                    "Aplikasi ini tidak melakukan scraping halaman Instagram."
+            with urlopen(request, timeout=30) as response:
+                content_type = response.headers.get("Content-Type", "")
+                final_url = response.geturl()
+
+                if not (content_type.startswith("image/") or
+                        content_type.startswith("video/")):
+                    raise ValueError(
+                        "URL bukan direct URL foto/video. "
+                        "Aplikasi ini tidak melakukan scraping halaman Instagram."
+                    )
+
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                base = safe_filename("instagram_" + timestamp)
+                media_path = os.path.join(
+                    DOWNLOAD_DIR,
+                    base + guess_extension(content_type, final_url)
                 )
 
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            base = safe_filename("instagram_" + timestamp)
-            media_path = os.path.join(
-                DOWNLOAD_DIR, base + guess_extension(content_type, response.url))
-
-            with open(media_path, "wb") as file:
-                for chunk in response.iter_content(chunk_size=1024 * 256):
-                    if chunk:
+                with open(media_path, "wb") as file:
+                    while True:
+                        chunk = response.read(256 * 1024)
+                        if not chunk:
+                            break
                         file.write(chunk)
 
             caption_path = None

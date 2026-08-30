@@ -27,8 +27,12 @@ Project ini disiapkan untuk dibuild melalui GitHub Actions. Upload seluruh folde
 7. Share hasil download.
 
 
-## v1.0.1 build fix
+## v1.0.2 build fix
 
 The Android build configuration uses min API 24. This avoids the
 `preadv`/`pwritev` compilation failure seen when the Python 3.11
 recipe is compiled with NDK r28c and target API 23.
+
+
+## v1.0.2
+Download uses Python standard-library urllib instead of requests for Android build compatibility.
