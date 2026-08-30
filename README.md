@@ -27,12 +27,16 @@ Project ini disiapkan untuk dibuild melalui GitHub Actions. Upload seluruh folde
 7. Share hasil download.
 
 
-## v1.0.2 build fix
+## v1.0.3 build fix
 
 The Android build configuration uses min API 24. This avoids the
 `preadv`/`pwritev` compilation failure seen when the Python 3.11
 recipe is compiled with NDK r28c and target API 23.
 
 
-## v1.0.2
+## v1.0.3
 Download uses Python standard-library urllib instead of requests for Android build compatibility.
+
+
+## v1.0.3 build fix
+Pinned python-for-android to v2024.01.21 (commit 957a3e5) to keep the Kivy 2.2.1 build on the Python 3.11-era toolchain. The previous failure occurred because newer p4a built hostpython 3.14, while Kivy 2.2.1's build environment imports the removed `cgi` module.
