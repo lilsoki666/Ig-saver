@@ -1,20 +1,14 @@
-# IGSaver v1.0.7
+# IGSaver v1.0.8
 
-Project Android Kivy untuk memilih dan menampilkan gambar dari galeri perangkat.
+Build correction for GitHub Actions.
 
-## Build GitHub Actions
-1. Upload seluruh isi project ke repository.
-2. Pastikan workflow `.github/workflows/build-apk.yml` ikut ter-upload.
-3. Buka **Actions** → **Build IGSaver APK** → **Run workflow**.
-4. APK tersedia pada **Artifacts** sebagai `IGSaver-v1.0.7-apk`.
+Main application code is unchanged from v1.0.7. The build environment is moved to Ubuntu 22.04 and host compiler include/library environment variables are cleared before Buildozer runs.
 
-## Build stack yang dikunci
-- Ubuntu 24.04
-- OpenJDK 17
+Pinned toolchain:
 - Python 3.11.9
 - Buildozer 1.5.0
 - Cython 0.29.37
+- python-for-android 2024.01.21 (957a3e5)
 - Kivy 2.3.0
-- python-for-android commit `957a3e5` (v2024.01.21)
-- Android NDK 25b
-- ARM64-v8a
+- Android NDK r25b
+- arm64-v8a

@@ -4,7 +4,7 @@ package.name = igsaver
 package.domain = org.igsaver
 source.dir = .
 source.include_exts = py,kv,png,jpg,jpeg,atlas,txt,json
-version = 1.0.7
+version = 1.0.8
 
 # Keep dependencies minimal and compatible with the pinned p4a release.
 requirements = python3==3.11.9,kivy==2.3.0,plyer
