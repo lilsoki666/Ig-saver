@@ -41,9 +41,6 @@ fullscreen = 0
 # (list) Permissions
 android.permissions = INTERNET, READ_EXTERNAL_STORAGE, WRITE_EXTERNAL_STORAGE, READ_MEDIA_IMAGES
 
-# (str) Android NDK version
-android.ndk = 25b
-
 # (bool) Use --private data storage (True) or --dir public storage (False)
 android.private_storage = True
 
