@@ -1,9 +1,6 @@
-import os
-import re
-import json
 import threading
+from instaloader import Instaloader, Post
 import requests
-import certifi
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.uix.boxlayout import BoxLayout
@@ -91,49 +88,34 @@ class IGSaverApp(App):
 
     def fetch_instagram_data(self, url):
         try:
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-            }
-            
-            # Format URL ke Endpoint Embed Instagram
-            clean_url = url.split('?')[0].rstrip('/')
-            embed_url = f"{clean_url}/embed/captioned/"
-            
-            response = requests.get(embed_url, headers=headers, verify=certifi.where(), timeout=10)
-            
-            if response.status_code != 200:
-                self.update_ui_error(f"Gagal akses postingan (HTTP {response.status_code})")
+            # Ekstrak shortcode postingan (misal dari /p/Da4Dy1ryL-H/ diambil 'Da4Dy1ryL-H')
+            parts = url.split('/')
+            shortcode = None
+            if 'p' in parts:
+                shortcode = parts[parts.index('p') + 1]
+            elif 'reel' in parts:
+                shortcode = parts[parts.index('reel') + 1]
+
+            if not shortcode:
+                self.update_ui_error("Format URL Instagram tidak valid.")
                 return
 
-            html = response.text
-            
-            # Ambil URL Gambar dari meta tag / regex HTML Embed
-            img_match = re.search(r'class="EmbeddedMediaImage"\s+src="([^"]+)"', html)
-            if not img_match:
-                img_match = re.search(r'property="og:image"\s+content="([^"]+)"', html)
-            
-            img_url = img_match.group(1).replace("&amp;", "&") if img_match else None
+            # Gunakan Instaloader untuk mengekstraksi data postingan
+            L = Instaloader()
+            post = Post.from_shortcode(L.context, shortcode)
 
-            # Ambil Caption dari teks embed
-            caption_match = re.search(r'class="CaptionNameWrapper"[^>]*>(.*?)</div>', html, re.DOTALL)
-            caption = ""
-            if caption_match:
-                # Bersihkan tag HTML dari caption
-                caption = re.sub(r'<[^>]+>', '', caption_match.group(1)).strip()
+            img_url = post.url
+            caption = post.caption if post.caption else ""
 
-            if not img_url:
-                self.update_ui_error("URL gambar tidak ditemukan (Postingan privat/dikunci).")
-                return
-
-            # Unduh biner gambar
-            img_resp = requests.get(img_url, headers=headers, verify=certifi.where(), timeout=10)
+            # Unduh gambar postingan
+            img_resp = requests.get(img_url, timeout=10)
             if img_resp.status_code == 200:
                 self.update_ui_success(img_resp.content, caption)
             else:
                 self.update_ui_error("Gagal mendownload gambar.")
 
         except Exception as e:
-            self.update_ui_error(str(e))
+            self.update_ui_error(f"Gagal mengambil data: {str(e)}")
 
 if __name__ == '__main__':
     IGSaverApp().run()
