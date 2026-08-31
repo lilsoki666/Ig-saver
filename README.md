@@ -1,15 +1,14 @@
-# IG Saver v1.0.4
+# IGSaver App
 
-Build-fixed release of IG Saver.
+Aplikasi Android berbasis Python & Kivy untuk memilih dan memuat gambar dari galeri perangkat.
 
-## Perubahan v1.0.4
-- Kode aplikasi `main.py` dipertahankan.
-- python-for-android dipin ke v2024.01.21 (commit 957a3e5).
-- Host/target Python dipaksa ke 3.11.9 agar tidak memilih Python 3.14.
-- Buildozer dipin ke 1.5.0.
-- Cython dipin ke 0.29.33.
+## Cara Build APK via GitHub Actions
+1. Push perubahan kode ke branch `main` atau `master`.
+2. Masuk ke tab **Actions** di repositori GitHub Anda.
+3. Jalankan workflow **Build Android APK** secara manual atau biarkan berjalan otomatis.
+4. Unduh file APK dari bagian **Artifacts** setelah proses build selesai.
 
-## Build GitHub Actions
-Jalankan workflow `Build IG Saver APK` secara manual dari tab Actions.
-
-APK debug akan tersedia sebagai artifact `ig-saver-apk`.
+## Struktur Proyek
+- `main.py`: Kode utama aplikasi Kivy
+- `buildozer.spec`: Konfigurasi kompilasi Android
+- `.github/workflows/build-apk.yml`: Script otomatisasi build APK
