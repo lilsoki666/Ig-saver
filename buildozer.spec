@@ -4,7 +4,7 @@ package.name = igsaver
 package.domain = org.igsaver
 source.dir = .
 source.include_exts = py,kv,png,jpg,jpeg,atlas,txt,json
-version = 1.0.8
+version = 1.1.0
 
 # Keep dependencies minimal and compatible with the pinned p4a release.
 requirements = python3==3.11.9,kivy==2.3.0,plyer
@@ -16,7 +16,7 @@ android.accept_sdk_license = True
 android.archs = arm64-v8a
 android.debug_artifact = apk
 android.private_storage = True
-android.permissions = INTERNET,READ_MEDIA_IMAGES,READ_EXTERNAL_STORAGE
+android.permissions = INTERNET,READ_MEDIA_IMAGES,READ_MEDIA_VIDEO,READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE
 orientation = portrait
 fullscreen = 0
 

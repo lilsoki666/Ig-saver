@@ -1,14 +1,9 @@
-# IGSaver v1.0.8
+# IGSaver v1.1.0
 
-Build correction for GitHub Actions.
+Aplikasi Android Kivy untuk mengambil media publik dari URL posting Instagram dan menyimpan media serta caption.
 
-Main application code is unchanged from v1.0.7. The build environment is moved to Ubuntu 22.04 and host compiler include/library environment variables are cleared before Buildozer runs.
+## Build
+Workflow GitHub Actions mempertahankan toolchain v1.0.8 yang sudah terbukti berhasil: Ubuntu 22.04, Python 3.11.9, Kivy 2.3.0, Buildozer 1.5.0, p4a commit 957a3e5, NDK 25b, ARM64.
 
-Pinned toolchain:
-- Python 3.11.9
-- Buildozer 1.5.0
-- Cython 0.29.37
-- python-for-android 2024.01.21 (957a3e5)
-- Kivy 2.3.0
-- Android NDK r25b
-- arm64-v8a
+## Catatan
+Downloader bergantung pada metadata publik halaman Instagram (OpenGraph). Postingan privat, halaman yang meminta login, atau perubahan struktur Instagram dapat membuat media/caption tidak tersedia.
