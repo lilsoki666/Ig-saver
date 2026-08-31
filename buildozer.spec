@@ -1,25 +1,60 @@
 [app]
-title = IG Saver
+
+# (str) Title of your application
+title = IGSaver
+
+# (str) Package name
 package.name = igsaver
-package.domain = com.syauqi
+
+# (str) Package domain (needed for android/ios packaging)
+package.domain = org.test
+
+# (str) Source code where the main.py live
 source.dir = .
-source.include_exts = py,png,jpg,jpeg,txt
+
+# (list) Source files to include (let empty to include all the files)
+source.include_exts = py,png,jpg,kv,atlas
+
+# (str) Application versioning
 version = 1.0.4
-requirements = python3==3.11.9,hostpython3==3.11.9,kivy==2.2.1
-orientation = portrait
-fullscreen = 0
-android.archs = arm64-v8a
-android.api = 35
-android.minapi = 24
-android.ndk = 25b
-android.accept_sdk_license = True
-android.debug_artifact = apk
+
+# (list) Application requirements
+# Semua dependency wajib dimasukkan ke sini
+requirements = python3, kivy==2.2.1, hostpython3, pillow, android, plyer
+
+# (str) Custom source folders for requirements
+# (str) Presplash of the application
+# (str) Icon of the application
 icon.filename = %(source.dir)s/assets/icon.png
 
-p4a.fork = kivy
-p4a.branch = v2024.01.21
-p4a.commit = 957a3e5
+# (list) Supported orientations
+orientation = portrait
+
+# (bool) Indicate if the application should be fullscreen or not
+fullscreen = 0
+
+# (list) Permissions
+android.permissions = INTERNET, READ_EXTERNAL_STORAGE, WRITE_EXTERNAL_STORAGE, READ_MEDIA_IMAGES
+
+# (int) Target Android API
+android.api = 33
+
+# (int) Minimum API supported
+android.minapi = 21
+
+# (str) Android NDK version
+android.ndk = 25b
+
+# (bool) Use --private data storage (True) or --dir public storage (False)
+android.private_storage = True
+
+# (bool) If True, accept all GPGS dependencies
+android.accept_sdk_license = True
 
 [buildozer]
+
+# (int) Log level (0 = error only, 1 = info, 2 = debug (with command output))
 log_level = 2
+
+# (int) Display warning if buildozer is run as root (0 = False, 1 = True)
 warn_on_root = 1
