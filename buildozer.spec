@@ -1,30 +1,29 @@
 [app]
-
 title = IGSaver
 package.name = igsaver
-package.domain = com.lilsoki666
+package.domain = org.igsaver
 source.dir = .
-source.include_exts = py,png,jpg,jpeg,kv,atlas
-version = 1.0.5
+source.include_exts = py,kv,png,jpg,jpeg,atlas,txt,json
+version = 1.0.6
 
-# Hanya dependency yang benar-benar dipakai aplikasi.
-requirements = python3,kivy==2.3.0,plyer
+# Keep dependencies minimal and compatible with the pinned p4a release.
+requirements = python3==3.11.9,kivy==2.3.0,plyer
 
-# Build stabil dengan python-for-android rilis yang kompatibel.
-p4a.source_dir = /home/runner/p4a
-
-android.api = 34
+android.api = 33
 android.minapi = 21
 android.ndk = 25b
 android.accept_sdk_license = True
 android.archs = arm64-v8a
-
+android.debug_artifact = apk
+android.private_storage = True
+android.permissions = INTERNET,READ_MEDIA_IMAGES,READ_EXTERNAL_STORAGE
 orientation = portrait
 fullscreen = 0
 
-# Android 13+ memakai READ_MEDIA_IMAGES; izin lama dipertahankan untuk perangkat lama.
-android.permissions = INTERNET,READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE,READ_MEDIA_IMAGES
-android.private_storage = True
+# Pin python-for-android to the known stable 2024.01.21 commit.
+p4a.fork = kivy
+p4a.branch = master
+p4a.commit = 957a3e5
 
 [buildozer]
 log_level = 2

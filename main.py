@@ -16,8 +16,8 @@ class MainWidget(BoxLayout):
         super(MainWidget, self).__init__(**kwargs)
         self.orientation = 'vertical'
 
-        # Widget untuk menampilkan gambar (menggunakan aset icon.png sebagai default)
-        self.img_display = Image(source='icon.png', allow_stretch=True)
+        # Preview area starts empty; no external icon asset is required.
+        self.img_display = Image(allow_stretch=True)
         self.add_widget(self.img_display)
 
         # Tombol untuk memilih foto
