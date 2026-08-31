@@ -1,4 +1,6 @@
 import os
+import re
+import json
 import threading
 import requests
 import certifi
@@ -54,10 +56,6 @@ class IGSaverApp(App):
         self.status_label.text = "Bersih."
         self.image_preview.texture = None
 
-    def update_status(self, text):
-        # Memastikan pembaruan UI dilakukan di Main Thread Kivy
-        Clock.schedule_once(lambda dt: setattr(self.status_label, 'text', text))
-
     def update_ui_success(self, image_data, caption_text):
         def _update(dt):
             self.download_btn.disabled = False
@@ -89,42 +87,42 @@ class IGSaverApp(App):
         self.download_btn.disabled = True
         self.status_label.text = "Mengambil data postingan..."
         
-        # Jalankan proses jaringan di Thread terpisah
         threading.Thread(target=self.fetch_instagram_data, args=(url,), daemon=True).start()
 
     def fetch_instagram_data(self, url):
         try:
-            # Gunakan certifi untuk penanganan SSL certificate di Android
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
             }
             
-            # Format URL ke GraphQL/Embed API Instagram
+            # Format URL ke Endpoint Embed Instagram
             clean_url = url.split('?')[0].rstrip('/')
-            json_url = f"{clean_url}/?__a=1&__d=dis"
+            embed_url = f"{clean_url}/embed/captioned/"
             
-            response = requests.get(json_url, headers=headers, verify=certifi.where(), timeout=10)
+            response = requests.get(embed_url, headers=headers, verify=certifi.where(), timeout=10)
             
             if response.status_code != 200:
-                # Fallback jika GraphQL dibatasi
-                self.update_ui_error(f"Gagal mengambil data (HTTP {response.status_code})")
+                self.update_ui_error(f"Gagal akses postingan (HTTP {response.status_code})")
                 return
 
-            data = response.json()
-            items = data.get('graphql', {}).get('shortcode_media', {}) or data.get('items', [{}])[0]
+            html = response.text
             
-            # Ambil URL Gambar & Caption
-            img_url = items.get('display_url') or items.get('image_versions2', {}).get('candidates', [{}])[0].get('url')
+            # Ambil URL Gambar dari meta tag / regex HTML Embed
+            img_match = re.search(r'class="EmbeddedMediaImage"\s+src="([^"]+)"', html)
+            if not img_match:
+                img_match = re.search(r'property="og:image"\s+content="([^"]+)"', html)
+            
+            img_url = img_match.group(1).replace("&amp;", "&") if img_match else None
+
+            # Ambil Caption dari teks embed
+            caption_match = re.search(r'class="CaptionNameWrapper"[^>]*>(.*?)</div>', html, re.DOTALL)
             caption = ""
-            
-            edges = items.get('edge_media_to_caption', {}).get('edges', [])
-            if edges:
-                caption = edges[0].get('node', {}).get('text', '')
-            elif 'caption' in items and isinstance(items['caption'], dict):
-                caption = items['caption'].get('text', '')
+            if caption_match:
+                # Bersihkan tag HTML dari caption
+                caption = re.sub(r'<[^>]+>', '', caption_match.group(1)).strip()
 
             if not img_url:
-                self.update_ui_error("URL Gambar tidak ditemukan.")
+                self.update_ui_error("URL gambar tidak ditemukan (Postingan privat/dikunci).")
                 return
 
             # Unduh biner gambar
@@ -132,7 +130,7 @@ class IGSaverApp(App):
             if img_resp.status_code == 200:
                 self.update_ui_success(img_resp.content, caption)
             else:
-                self.update_ui_error("Gagal mengunduh file media.")
+                self.update_ui_error("Gagal mendownload gambar.")
 
         except Exception as e:
             self.update_ui_error(str(e))
