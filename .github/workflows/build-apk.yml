@@ -1,86 +1,90 @@
 name: Build IGSaver APK
 
 on:
-  workflow_dispatch:
   push:
-    branches: [main, master]
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
 
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-          cache: gradle
+      - name: Set up JDK 17 (APT, no Gradle cache)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openjdk-17-jdk
+          echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> "$GITHUB_ENV"
+          echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> "$GITHUB_PATH"
+          java -version
+          javac -version
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11.9'
-          cache: pip
+          cache: 'pip'
 
       - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            build-essential git zip unzip \
-            libffi-dev libssl-dev zlib1g-dev \
+            git zip unzip build-essential ccache \
             autoconf automake libtool pkg-config \
-            libltdl-dev libsqlite3-dev ccache
+            libffi-dev libssl-dev zlib1g-dev \
+            libncurses5-dev libncursesw5-dev \
+            cmake gettext autopoint \
+            libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
+            libportmidi-dev libswscale-dev libavformat-dev libavcodec-dev
 
       - name: Install pinned Python build tools
         run: |
           python -m pip install --upgrade pip
-          python -m pip install "setuptools<70" "wheel<1" "cython==0.29.37" "buildozer==1.5.0"
-
-      - name: Prepare pinned python-for-android
-        run: |
-          rm -rf /home/runner/p4a
-          git clone --depth 1 --branch 2024.01.21 https://github.com/kivy/python-for-android.git /home/runner/p4a
-          cd /home/runner/p4a
-          git rev-parse HEAD
-
-      - name: Verify build configuration
-        run: |
-          python --version
-          cython --version
+          python -m pip install \
+            "setuptools<69" \
+            "wheel<1" \
+            "cython==0.29.37" \
+            "buildozer==1.5.0"
           buildozer --version
+          cython --version
+
+      - name: Verify project configuration
+        run: |
           test -f main.py
           test -f buildozer.spec
-          test -d /home/runner/p4a
+          grep -E '^(requirements|p4a\.branch|p4a\.commit|android\.ndk|android\.archs)' buildozer.spec
+          python -m py_compile main.py
 
-      - name: Build APK (retry for transient download errors)
-        shell: bash
+      - name: Clean previous Buildozer state
         run: |
-          set -o pipefail
-          success=0
+          rm -rf .buildozer bin
+
+      - name: Build APK (retry transient network failures)
+        run: |
           for attempt in 1 2 3; do
-            echo "===== BUILD ATTEMPT $attempt/3 ====="
-            if yes | buildozer -v android debug 2>&1 | tee "build-attempt-${attempt}.log"; then
-              success=1
-              break
+            echo "Build attempt $attempt/3"
+            if yes | buildozer -v android debug; then
+              exit 0
             fi
-            echo "Build attempt $attempt failed. Retrying after cleanup..."
-            rm -rf .buildozer/android/platform/build-* || true
-            sleep 15
+            if [ "$attempt" -lt 3 ]; then
+              echo "Build failed; waiting before retry..."
+              rm -rf .buildozer bin
+              sleep $((attempt * 20))
+            fi
           done
-          if [ "$success" -ne 1 ]; then
-            echo "All build attempts failed. Showing the final relevant errors:"
-            grep -E "ERROR|Error|Traceback|HTTP Error|FAILED|failed" build-attempt-*.log | tail -n 120 || true
-            exit 1
-          fi
+          exit 1
 
       - name: Upload APK
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: IGSaver-v1.0.5-apk
+          name: IGSaver-v1.0.6-apk
           path: bin/*.apk
           if-no-files-found: error
