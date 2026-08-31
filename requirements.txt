@@ -1,2 +1,3 @@
 kivy==2.3.0
 plyer
+certifi

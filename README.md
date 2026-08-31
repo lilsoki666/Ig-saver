@@ -1,9 +1,13 @@
-# IGSaver v1.1.0
+# IGSaver v1.1.1
 
-Aplikasi Android Kivy untuk mengambil media publik dari URL posting Instagram dan menyimpan media serta caption.
+Perbaikan utama pada v1.1.1:
+- Memperbaiki SSL Android dengan CA bundle `certifi`.
+- Pengambilan halaman Instagram memakai header yang lebih lengkap.
+- Download media memakai SSL context yang sama dan timeout lebih aman.
+- Tidak mengubah alur UI utama.
 
 ## Build
-Workflow GitHub Actions mempertahankan toolchain v1.0.8 yang sudah terbukti berhasil: Ubuntu 22.04, Python 3.11.9, Kivy 2.3.0, Buildozer 1.5.0, p4a commit 957a3e5, NDK 25b, ARM64.
+Workflow menggunakan Ubuntu 22.04, Python 3.11.9, Kivy 2.3.0, Buildozer 1.5.0, p4a commit 957a3e5, NDK 25b, ARM64.
 
 ## Catatan
-Downloader bergantung pada metadata publik halaman Instagram (OpenGraph). Postingan privat, halaman yang meminta login, atau perubahan struktur Instagram dapat membuat media/caption tidak tersedia.
+Aplikasi hanya mengambil media dari posting Instagram yang dapat diakses publik. Perubahan struktur halaman Instagram, posting privat, atau halaman yang meminta login dapat membuat metadata media/caption tidak tersedia.

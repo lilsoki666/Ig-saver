@@ -4,6 +4,8 @@ import html
 import threading
 import urllib.request
 import urllib.parse
+import ssl
+import certifi
 from pathlib import Path
 
 from kivy.app import App
@@ -64,9 +66,23 @@ def extract_caption(description):
     return description.strip()
 
 
+def _ssl_context():
+    # Android builds can have an incomplete/old system CA store.
+    # certifi provides a current CA bundle inside the APK.
+    return ssl.create_default_context(cafile=certifi.where())
+
+
 def fetch_post(url):
-    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "Accept-Language": "en-US,en;q=0.9"})
-    with urllib.request.urlopen(request, timeout=25) as response:
+    request = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": USER_AGENT,
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9,id;q=0.8",
+            "Cache-Control": "no-cache",
+        },
+    )
+    with urllib.request.urlopen(request, timeout=30, context=_ssl_context()) as response:
         page = response.read().decode("utf-8", "ignore")
 
     image_url = meta_content(page, "og:image")
@@ -88,8 +104,15 @@ def fetch_post(url):
 
 
 def download_file(url, destination):
-    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    with urllib.request.urlopen(request, timeout=60) as response, open(destination, "wb") as output:
+    request = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": USER_AGENT,
+            "Referer": "https://www.instagram.com/",
+            "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+        },
+    )
+    with urllib.request.urlopen(request, timeout=90, context=_ssl_context()) as response, open(destination, "wb") as output:
         while True:
             chunk = response.read(1024 * 256)
             if not chunk:
@@ -212,6 +235,11 @@ class MainWidget(BoxLayout):
             self.result = result
             self.result_file = str(target)
             Clock.schedule_once(lambda dt: self.show_result(result, str(target)))
+        except ssl.SSLCertVerificationError:
+            message = (
+                "Sertifikat HTTPS tidak dapat diverifikasi. "
+                "Pastikan tanggal/jam HP benar lalu coba lagi."
+            )
         except Exception as exc:
             message = str(exc)
             Clock.schedule_once(lambda dt: self.download_failed(message))
