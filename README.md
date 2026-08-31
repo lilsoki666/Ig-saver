@@ -1,14 +1,18 @@
-# IGSaver App
+# IGSaver v1.0.5
 
-Aplikasi Android berbasis Python & Kivy untuk memilih dan memuat gambar dari galeri perangkat.
+Project Android Kivy untuk IGSaver.
 
-## Cara Build APK via GitHub Actions
-1. Push perubahan kode ke branch `main` atau `master`.
-2. Masuk ke tab **Actions** di repositori GitHub Anda.
-3. Jalankan workflow **Build Android APK** secara manual atau biarkan berjalan otomatis.
-4. Unduh file APK dari bagian **Artifacts** setelah proses build selesai.
+## Perbaikan build v1.0.5
+- Python GitHub Actions dikunci ke 3.11.9.
+- Buildozer dikunci ke 1.5.0.
+- Cython dikunci ke 0.29.37.
+- python-for-android dikunci ke release 2024.01.21.
+- NDK dikunci ke 25b.
+- Hanya ARM64 yang dibuild untuk mengurangi titik kegagalan.
+- Workflow mencoba build sampai 3 kali untuk mengatasi kegagalan download sementara seperti HTTP 502.
+- Dependency aplikasi dipersempit menjadi Kivy + Plyer.
 
-## Struktur Proyek
-- `main.py`: Kode utama aplikasi Kivy
-- `buildozer.spec`: Konfigurasi kompilasi Android
-- `.github/workflows/build-apk.yml`: Script otomatisasi build APK
+## Build
+GitHub → Actions → Build IGSaver APK → Run workflow.
+
+APK akan tersedia pada Artifacts setelah job berhasil.
