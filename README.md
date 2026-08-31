@@ -1,4 +1,4 @@
-# IGSaver v1.0.6
+# IGSaver v1.0.7
 
 Project Android Kivy untuk memilih dan menampilkan gambar dari galeri perangkat.
 
@@ -6,7 +6,7 @@ Project Android Kivy untuk memilih dan menampilkan gambar dari galeri perangkat.
 1. Upload seluruh isi project ke repository.
 2. Pastikan workflow `.github/workflows/build-apk.yml` ikut ter-upload.
 3. Buka **Actions** → **Build IGSaver APK** → **Run workflow**.
-4. APK tersedia pada **Artifacts** sebagai `IGSaver-v1.0.6-apk`.
+4. APK tersedia pada **Artifacts** sebagai `IGSaver-v1.0.7-apk`.
 
 ## Build stack yang dikunci
 - Ubuntu 24.04
