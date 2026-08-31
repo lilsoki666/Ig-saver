@@ -2,4 +2,4 @@ kivy==2.3.0
 plyer
 certifi
 requests
-urllib3
+instaloader
