@@ -18,9 +18,14 @@ source.include_exts = py,png,jpg,kv,atlas
 # (str) Application versioning
 version = 1.0.4
 
-# (list) Application requirements
-# Semua dependency wajib dimasukkan ke sini
+# Gunakan Cython versi 0.29.x pada requirements spec jika diperlukan
 requirements = python3, kivy==2.2.1, hostpython3, pillow, android, plyer
+
+# Konfigurasi API dan NDK yang stabil
+android.api = 33
+android.minapi = 21
+android.ndk = 25b
+android.accept_sdk_license = True
 
 # (str) Custom source folders for requirements
 # (str) Presplash of the application
