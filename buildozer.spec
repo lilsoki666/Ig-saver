@@ -44,9 +44,6 @@ android.permissions = INTERNET, READ_EXTERNAL_STORAGE, WRITE_EXTERNAL_STORAGE, R
 # (bool) Use --private data storage (True) or --dir public storage (False)
 android.private_storage = True
 
-# (bool) If True, accept all GPGS dependencies
-android.accept_sdk_license = True
-
 [buildozer]
 
 # (int) Log level (0 = error only, 1 = info, 2 = debug (with command output))
