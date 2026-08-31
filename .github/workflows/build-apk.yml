@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 60
 
     steps:
@@ -66,6 +66,12 @@ jobs:
         run: |
           rm -rf .buildozer bin
 
+      - name: Isolate host compiler environment
+        run: |
+          unset CPATH C_INCLUDE_PATH CPLUS_INCLUDE_PATH OBJC_INCLUDE_PATH LIBRARY_PATH
+          unset CFLAGS CXXFLAGS CPPFLAGS LDFLAGS
+          echo "Host compiler environment isolated"
+
       - name: Build APK (retry transient network failures)
         run: |
           for attempt in 1 2 3; do
@@ -85,6 +91,6 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: IGSaver-v1.0.7-apk
+          name: IGSaver-v1.0.8-apk
           path: bin/*.apk
           if-no-files-found: error
