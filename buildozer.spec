@@ -41,9 +41,6 @@ fullscreen = 0
 # (list) Permissions
 android.permissions = INTERNET, READ_EXTERNAL_STORAGE, WRITE_EXTERNAL_STORAGE, READ_MEDIA_IMAGES
 
-# (int) Minimum API supported
-android.minapi = 21
-
 # (str) Android NDK version
 android.ndk = 25b
 
