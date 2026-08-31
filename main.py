@@ -1,6 +1,7 @@
 import threading
-from instaloader import Instaloader, Post
 import requests
+import json
+import re
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.uix.boxlayout import BoxLayout
@@ -88,34 +89,46 @@ class IGSaverApp(App):
 
     def fetch_instagram_data(self, url):
         try:
-            # Ekstrak shortcode postingan (misal dari /p/Da4Dy1ryL-H/ diambil 'Da4Dy1ryL-H')
-            parts = url.split('/')
-            shortcode = None
-            if 'p' in parts:
-                shortcode = parts[parts.index('p') + 1]
-            elif 'reel' in parts:
-                shortcode = parts[parts.index('reel') + 1]
-
-            if not shortcode:
-                self.update_ui_error("Format URL Instagram tidak valid.")
+            # Mengambil Shortcode dari URL
+            match = re.search(r'/(?:p|reel)/([^/?#&]+)', url)
+            if not match:
+                self.update_ui_error("URL Instagram tidak valid.")
                 return
+            
+            shortcode = match.group(1)
+            
+            # Menggunakan API public i.instagram.com (Sangat stabil di mobile)
+            api_url = f"https://i.instagram.com/api/v1/media/{shortcode}/info/"
+            headers = {
+                'User-Agent': 'Instagram 275.0.0.27.98 Android (30/11; 320dpi; 720x1280; Xiaomi; Redmi 9A; dandelion; mt6762; in_ID; 458229447)'
+            }
 
-            # Gunakan Instaloader untuk mengekstraksi data postingan
-            L = Instaloader()
-            post = Post.from_shortcode(L.context, shortcode)
+            response = requests.get(api_url, headers=headers, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                items = data.get('items', [])[0]
+                
+                # Mengambil URL Gambar
+                img_url = None
+                if 'image_versions2' in items:
+                    img_url = items['image_versions2']['candidates'][0]['url']
+                
+                # Mengambil Caption
+                caption = ""
+                if 'caption' in items and items['caption']:
+                    caption = items['caption'].get('text', '')
 
-            img_url = post.url
-            caption = post.caption if post.caption else ""
-
-            # Unduh gambar postingan
-            img_resp = requests.get(img_url, timeout=10)
-            if img_resp.status_code == 200:
-                self.update_ui_success(img_resp.content, caption)
-            else:
-                self.update_ui_error("Gagal mendownload gambar.")
+                if img_url:
+                    img_resp = requests.get(img_url, timeout=10)
+                    if img_resp.status_code == 200:
+                        self.update_ui_success(img_resp.content, caption)
+                        return
+            
+            self.update_ui_error("Gagal mengambil data dari Instagram.")
 
         except Exception as e:
-            self.update_ui_error(f"Gagal mengambil data: {str(e)}")
+            self.update_ui_error(f"Gagal: {str(e)}")
 
 if __name__ == '__main__':
     IGSaverApp().run()
