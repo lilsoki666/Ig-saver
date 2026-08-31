@@ -1,45 +1,86 @@
-name: Build Android APK
+name: Build IGSaver APK
 
 on:
-  push:
-    branches: [ main, master ]
   workflow_dispatch:
+  push:
+    branches: [main, master]
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v4
+      - name: Checkout source
+        uses: actions/checkout@v4
 
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: '17'
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11.9'
+          cache: pip
 
-    - name: Install System Dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential libffi-dev libssl-dev ccache git ffmpeg libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev libportmidi-dev libswscale-dev libavformat-dev libavcodec-dev zlib1g-dev
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential git zip unzip \
+            libffi-dev libssl-dev zlib1g-dev \
+            autoconf automake libtool pkg-config \
+            libltdl-dev libsqlite3-dev ccache
 
-    - name: Install Buildozer and Cython
-      run: |
-        python -m pip install --upgrade pip "setuptools<69.0.0"
-        pip install "cython<3.0.0" buildozer
+      - name: Install pinned Python build tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "setuptools<70" "wheel<1" "cython==0.29.37" "buildozer==1.5.0"
 
-    - name: Build APK with Buildozer
-      run: |
-        yes | buildozer -v android debug
+      - name: Prepare pinned python-for-android
+        run: |
+          rm -rf /home/runner/p4a
+          git clone --depth 1 --branch 2024.01.21 https://github.com/kivy/python-for-android.git /home/runner/p4a
+          cd /home/runner/p4a
+          git rev-parse HEAD
 
-    - name: Upload APK Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: app-debug
-        path: bin/*.apk
+      - name: Verify build configuration
+        run: |
+          python --version
+          cython --version
+          buildozer --version
+          test -f main.py
+          test -f buildozer.spec
+          test -d /home/runner/p4a
+
+      - name: Build APK (retry for transient download errors)
+        shell: bash
+        run: |
+          set -o pipefail
+          success=0
+          for attempt in 1 2 3; do
+            echo "===== BUILD ATTEMPT $attempt/3 ====="
+            if yes | buildozer -v android debug 2>&1 | tee "build-attempt-${attempt}.log"; then
+              success=1
+              break
+            fi
+            echo "Build attempt $attempt failed. Retrying after cleanup..."
+            rm -rf .buildozer/android/platform/build-* || true
+            sleep 15
+          done
+          if [ "$success" -ne 1 ]; then
+            echo "All build attempts failed. Showing the final relevant errors:"
+            grep -E "ERROR|Error|Traceback|HTTP Error|FAILED|failed" build-attempt-*.log | tail -n 120 || true
+            exit 1
+          fi
+
+      - name: Upload APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: IGSaver-v1.0.5-apk
+          path: bin/*.apk
+          if-no-files-found: error
