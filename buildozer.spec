@@ -21,7 +21,7 @@ orientation = portrait
 fullscreen = 0
 
 p4a.fork = kivy
-p4a.branch = master
+p4a.branch = v2024.1.21
 
 [buildozer]
 log_level = 2

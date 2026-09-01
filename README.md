@@ -22,3 +22,7 @@ Push the project to GitHub and run **Actions → Build IGSaver APK → Run workf
 4. If Instagram permits public access, the app reads the preview image and available caption.
 
 No Session ID is requested or stored.
+
+
+## Build fix v1.2.2
+This version pins python-for-android to `v2024.1.21`, whose default Python build is 3.11, matching `python3==3.11.9`. The GitHub workflow uses Python 3.11.9 and does not enable Gradle caching because this is a Buildozer/python-for-android project.
