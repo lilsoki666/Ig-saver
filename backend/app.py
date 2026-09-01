@@ -1,199 +1,75 @@
-import re
-import json
 import os
+import re
 import tempfile
+import json
 import subprocess
-
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, HttpUrl
 
-
-app = FastAPI(
-    title="IGSaver API",
-    version="1.3.0"
-)
-
+app = FastAPI(title="IGSaver API", version="1.3.0")
 
 class FetchRequest(BaseModel):
-
     url: HttpUrl
 
-
-def valid_instagram_url(url):
-
-    pattern = (
-        r"^https?://"
-        r"(www\.)?"
-        r"instagram\.com/"
-        r"(p|reel|tv)/"
-    )
-
-    return bool(
-        re.match(
-            pattern,
-            url
-        )
-    )
-
+def valid_instagram_url(url: str) -> bool:
+    return bool(re.match(r"^https?://(www\.)?instagram\.com/(p|reel|tv)/", url))
 
 @app.get("/health")
 def health():
-
-    return {
-        "ok": True,
-        "service": "IGSaver API",
-        "version": "1.3.0"
-    }
-
+    return {"ok": True, "service": "IGSaver API", "version": "1.3.0"}
 
 @app.post("/api/fetch")
-def fetch_post(request: FetchRequest):
-
-    url = str(request.url)
-
+def fetch_post(req: FetchRequest):
+    url = str(req.url)
     if not valid_instagram_url(url):
+        raise HTTPException(400, "URL harus berupa posting/reel Instagram.")
 
-        raise HTTPException(
-            status_code=400,
-            detail="URL Instagram tidak valid."
-        )
-
-    with tempfile.TemporaryDirectory() as temp:
-
-        output = os.path.join(
-            temp,
-            "%(id)s.%(ext)s"
-        )
-
-        command = [
+    with tempfile.TemporaryDirectory() as td:
+        out = os.path.join(td, "%(id)s.%(ext)s")
+        cmd = [
             "yt-dlp",
-
             "--dump-single-json",
-
             "--no-warnings",
-
             "--skip-download",
-
             "--no-playlist",
-
-            "--output",
-            output,
-
-            url
+            "--no-check-certificates",
+            "--output", out,
+            url,
         ]
+        p = subprocess.run(cmd, capture_output=True, text=True, timeout=90)
+        if p.returncode != 0:
+            err = (p.stderr or p.stdout or "Gagal mengambil posting.")[-1200:]
+            raise HTTPException(502, "Backend gagal mengambil posting: " + err)
 
         try:
-
-            result = subprocess.run(
-                command,
-                capture_output=True,
-                text=True,
-                timeout=90
-            )
-
-        except subprocess.TimeoutExpired:
-
-            raise HTTPException(
-                status_code=504,
-                detail="Server terlalu lama memproses posting."
-            )
-
-        if result.returncode != 0:
-
-            error = (
-                result.stderr
-                or result.stdout
-                or "Gagal mengambil posting."
-            )
-
-            raise HTTPException(
-                status_code=502,
-                detail=error[-1500:]
-            )
-
-        try:
-
-            info = json.loads(
-                result.stdout
-            )
-
+            info = json.loads(p.stdout)
         except Exception:
+            raise HTTPException(502, "Respons extractor tidak valid.")
 
-            raise HTTPException(
-                status_code=502,
-                detail="Respons extractor tidak valid."
-            )
-
-        caption = (
-            info.get("description")
-            or info.get("title")
-            or ""
-        )
-
-        media = []
-
+        caption = info.get("description") or info.get("title") or ""
         entries = info.get("entries")
-
         if entries:
-
-            for entry in entries:
-
-                if not entry:
+            media = []
+            for e in entries:
+                if not e:
                     continue
-
-                media_url = entry.get(
-                    "url"
-                )
-
-                if media_url:
-
-                    media.append({
-                        "url": media_url,
-                        "type": entry.get(
-                            "ext",
-                            "media"
-                        )
-                    })
-
+                u = e.get("url")
+                if u:
+                    media.append({"url": u, "type": e.get("_type") or "media"})
+            if not media and info.get("url"):
+                media = [{"url": info["url"], "type": info.get("ext", "media")}]
         else:
-
-            media_url = info.get(
-                "url"
-            )
-
-            if media_url:
-
-                media.append({
-                    "url": media_url,
-                    "type": info.get(
-                        "ext",
-                        "media"
-                    )
-                })
+            media = []
+            if info.get("url"):
+                media.append({"url": info["url"], "type": info.get("ext", "media")})
 
         if not media:
-
-            raise HTTPException(
-                status_code=404,
-                detail=(
-                    "Posting ditemukan tetapi "
-                    "URL media tidak tersedia."
-                )
-            )
+            raise HTTPException(404, "Posting ditemukan tetapi URL media tidak tersedia.")
 
         return {
             "ok": True,
-
-            "id": info.get(
-                "id"
-            ),
-
+            "id": info.get("id"),
             "caption": caption,
-
-            "type": info.get(
-                "ext",
-                "post"
-            ),
-
-            "media": media
+            "type": info.get("ext") or "post",
+            "media": media,
         }
