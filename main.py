@@ -28,8 +28,8 @@ class IGSaverApp(App):
         
         # Tombol Aksi
         btn_layout = BoxLayout(orientation='horizontal', spacing=10, size_hint_y=None, height=45)
-        self.download_btn = Button(text="Download", on_press=self.start_fetch_thread)
         clear_btn = Button(text="Bersihkan", on_press=self.clear_fields)
+        self.download_btn = Button(text="Download", on_press=self.start_fetch_thread)
         btn_layout.add_widget(clear_btn)
         btn_layout.add_widget(self.download_btn)
         main_layout.add_widget(btn_layout)
@@ -96,55 +96,45 @@ class IGSaverApp(App):
             
             shortcode = match.group(1)
             
-            # 1. Metodologi API Android resmi dengan App-ID
-            api_url = f"https://i.instagram.com/api/v1/media/{shortcode}/info/"
+            # Endpoint API 1: Public JSON Proxy
+            api_url = f"https://api.vocal.media/instagram?url=https://www.instagram.com/p/{shortcode}/"
             headers = {
-                'User-Agent': 'Instagram 275.0.0.27.98 Android (30/11; 320dpi; 720x1280; Xiaomi; Redmi 9A; dandelion; mt6762; in_ID; 458229447)',
-                'X-IG-App-ID': '936619743392459',
-                'Accept-Language': 'en-US,en;q=0.9',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
             }
 
-            response = requests.get(api_url, headers=headers, timeout=10)
-            
-            if response.status_code == 200:
-                data = response.json()
-                items = data.get('items', [])
-                if items:
-                    item = items[0]
-                    img_url = None
-                    if 'image_versions2' in item:
-                        img_url = item['image_versions2']['candidates'][0]['url']
-                    
-                    caption = ""
-                    if 'caption' in item and item['caption']:
-                        caption = item['caption'].get('text', '')
+            img_url = None
+            caption = ""
 
-                    if img_url:
-                        img_resp = requests.get(img_url, timeout=10)
-                        if img_resp.status_code == 200:
-                            self.update_ui_success(img_resp.content, caption)
-                            return
+            # Cobaan Metode 1
+            try:
+                res = requests.get(f"https://www.instagram.com/p/{shortcode}/?__a=1&__d=dis", headers=headers, timeout=5)
+                if res.status_code == 200:
+                    jdata = res.json()
+                    item = jdata.get('items', [{}])[0] or jdata.get('graphql', {}).get('shortcode_media', {})
+                    img_url = item.get('display_url') or item.get('image_versions2', {}).get('candidates', [{}])[0].get('url')
+                    caption = item.get('caption', {}).get('text', '') if isinstance(item.get('caption'), dict) else ""
+            except:
+                pass
 
-            # 2. Fallback jika API dibatasi (Parsing Meta OpenGraph)
-            web_url = f"https://www.instagram.com/p/{shortcode}/"
-            web_headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-            }
-            web_resp = requests.get(web_url, headers=web_headers, timeout=10)
-            if web_resp.status_code == 200:
-                img_match = re.search(r'<meta property="og:image" content="([^"]+)"', web_resp.text)
-                desc_match = re.search(r'<meta property="og:description" content="([^"]+)"', web_resp.text)
-                
-                if img_match:
-                    img_url = img_match.group(1).replace('&amp;', '&')
-                    caption = desc_match.group(1) if desc_match else ""
-                    
-                    img_resp = requests.get(img_url, timeout=10)
-                    if img_resp.status_code == 200:
-                        self.update_ui_success(img_resp.content, caption)
-                        return
+            # Cobaan Metode 2 (Pencarian Metadata GraphQL Oembed)
+            if not img_url:
+                try:
+                    oembed_url = f"https://api.instagram.com/oembed/?url=https://www.instagram.com/p/{shortcode}/"
+                    oembed_res = requests.get(oembed_url, headers=headers, timeout=5)
+                    if oembed_res.status_code == 200:
+                        data = oembed_res.json()
+                        img_url = data.get('thumbnail_url')
+                        caption = data.get('title', '')
+                except:
+                    pass
 
-            self.update_ui_error("Gagal mengambil data dari Instagram.")
+            if img_url:
+                img_resp = requests.get(img_url, timeout=10)
+                if img_resp.status_code == 200:
+                    self.update_ui_success(img_resp.content, caption)
+                    return
+
+            self.update_ui_error("Instagram memblokir akses publik. Coba postingan publik lain.")
 
         except Exception as e:
             self.update_ui_error(f"Gagal: {str(e)}")
