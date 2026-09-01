@@ -1,4 +1,4 @@
-name: Build IGSaver APK
+name: Build Android APK
 
 on:
   workflow_dispatch:
@@ -6,50 +6,36 @@ on:
     branches:
       - main
 
-permissions:
-  contents: read
-
-concurrency:
-  group: igsaver-apk-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   build:
-    name: Build Android APK
     runs-on: ubuntu-latest
-    timeout-minutes: 60
 
     steps:
-      - name: Checkout
+      - name: Checkout source
         uses: actions/checkout@v4
 
       - name: Show project files
         run: |
           echo "=== PROJECT ==="
-          find . -maxdepth 3 -type f \
-            ! -path './.git/*' \
-            ! -path './.buildozer/*' \
-            | sort
+          find . -maxdepth 3 -type f | sort
+          echo "=== ANDROID ==="
+          ls -la android
+          echo "=== BUILDZ​​ER SPEC ==="
+          test -f android/buildozer.spec
 
-      - name: Build APK in official Buildozer container
+      - name: Build APK
         run: |
           docker pull kivy/buildozer:latest
+
           docker run --rm \
-            -v "${GITHUB_WORKSPACE}:/home/user/hostcwd" \
+            -v "${GITHUB_WORKSPACE}/android:/home/user/hostcwd" \
             -w /home/user/hostcwd \
             kivy/buildozer:latest \
             android debug
 
-      - name: Find APK
-        run: |
-          echo "=== APK FILES ==="
-          find . -type f -name "*.apk" -print
-          test -n "$(find . -type f -name '*.apk' -print -quit)"
-
-      - name: Upload APK artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: IGSaver-debug-apk
-          path: "**/*.apk"
+          name: IGSaver-APK
+          path: android/bin/*.apk
           if-no-files-found: error
-          retention-days: 14
