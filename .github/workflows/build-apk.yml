@@ -8,67 +8,113 @@ on:
 
 jobs:
   build:
+    name: Build Android APK
     runs-on: ubuntu-22.04
 
+    env:
+      ANDROID_HOME: /home/runner/android-sdk
+      ANDROID_SDK_ROOT: /home/runner/android-sdk
+      JAVA_HOME: /usr/lib/jvm/temurin-17-jdk-amd64
+
     steps:
-      - name: Checkout source
+      # ============================================================
+      # 1. Checkout repository
+      # ============================================================
+      - name: Checkout repository
         uses: actions/checkout@v4
 
+      # ============================================================
+      # 2. Java 17
+      # ============================================================
       - name: Setup Java 17
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: "17"
+          cache: pip
 
+      # ============================================================
+      # 3. Python 3.11
+      # ============================================================
       - name: Setup Python 3.11
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
+      # ============================================================
+      # 4. Install system dependencies
+      # ============================================================
       - name: Install system dependencies
         run: |
           sudo apt-get update
+
           sudo apt-get install -y \
             git \
             zip \
             unzip \
             wget \
             curl \
+            build-essential \
             autoconf \
             automake \
             libtool \
             pkg-config \
-            build-essential \
+            libltdl-dev \
             libffi-dev \
-            libssl-dev
+            libssl-dev \
+            zlib1g-dev \
+            libncurses5-dev \
+            libncursesw5-dev \
+            cmake \
+            ninja-build \
+            ccache
 
-      - name: Install Android command line tools
+      # ============================================================
+      # 5. Install Buildozer
+      # ============================================================
+      - name: Install Buildozer
         run: |
-          mkdir -p "$HOME/android-sdk/cmdline-tools"
+          python -m pip install --upgrade pip setuptools wheel
 
-          cd "$HOME"
+          python -m pip install \
+            "buildozer==1.5.0"
+
+          buildozer --version
+
+      # ============================================================
+      # 6. Install Android command line tools
+      # ============================================================
+      - name: Install Android SDK
+        run: |
+          mkdir -p "$ANDROID_HOME/cmdline-tools"
+
+          cd /tmp
 
           wget -q \
             https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip \
-            -O cmdline-tools.zip
+            -O commandlinetools.zip
 
-          unzip -q cmdline-tools.zip \
-            -d "$HOME/android-sdk/cmdline-tools"
+          unzip -q commandlinetools.zip
 
-          mv "$HOME/android-sdk/cmdline-tools/cmdline-tools" \
-             "$HOME/android-sdk/cmdline-tools/latest"
+          mkdir -p "$ANDROID_HOME/cmdline-tools/latest"
 
-          echo "ANDROID_HOME=$HOME/android-sdk" >> "$GITHUB_ENV"
-          echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> "$GITHUB_ENV"
+          mv cmdline-tools/* \
+            "$ANDROID_HOME/cmdline-tools/latest/"
 
-          echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
-          echo "$HOME/android-sdk/platform-tools" >> "$GITHUB_PATH"
-          echo "$HOME/android-sdk/build-tools/35.0.0" >> "$GITHUB_PATH"
+          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
 
-      - name: Accept Android licenses
+          echo "Android SDK installed."
+
+      # ============================================================
+      # 7. Accept Android licenses
+      # ============================================================
+      - name: Accept Android SDK licenses
         run: |
-          yes | sdkmanager --licenses || true
+          yes | sdkmanager --licenses >/dev/null || true
 
+      # ============================================================
+      # 8. Install exact SDK packages
+      # ============================================================
       - name: Install Android SDK packages
         run: |
           sdkmanager \
@@ -76,61 +122,140 @@ jobs:
             "platforms;android-35" \
             "build-tools;35.0.0"
 
+          echo "Installed Android SDK packages:"
+          sdkmanager --list_installed
+
+      # ============================================================
+      # 9. Verify SDK / AIDL
+      # ============================================================
       - name: Verify Android SDK
-        run: |
-           echo "ANDROID_HOME=$ANDROID_HOME"
-
-           test -f "$ANDROID_HOME/build-tools/35.0.0/aidl"
-
-           echo "AIDL found:"
-           ls -lh "$ANDROID_HOME/build-tools/35.0.0/aidl"
-
-           echo "AIDL test:"
-           "$ANDROID_HOME/build-tools/35.0.0/aidl" --help >/dev/null
-
-           echo "Android SDK verification completed."
-           
-      - name: Install Python build tools
-        run: |
-          python -m pip install --upgrade pip setuptools wheel
-          pip install \
-            buildozer \
-            cython==0.29.37
-
-      - name: Prepare project
-        working-directory: android
-        run: |
-          echo "=== Android project ==="
-          ls -lah
-
-          echo "=== buildozer.spec ==="
-          cat buildozer.spec
-
-          echo "=== main.py ==="
-          test -f main.py
-
-      - name: Configure Buildozer environment
         run: |
           echo "ANDROID_HOME=$ANDROID_HOME"
           echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
 
+          echo ""
+          echo "Java:"
+          java -version
+
+          echo ""
+          echo "Android SDK:"
+          ls -la "$ANDROID_HOME"
+
+          echo ""
+          echo "Build Tools:"
+          ls -la "$ANDROID_HOME/build-tools/35.0.0"
+
+          echo ""
+          echo "Checking AIDL..."
+
+          test -f \
+            "$ANDROID_HOME/build-tools/35.0.0/aidl"
+
+          "$ANDROID_HOME/build-tools/35.0.0/aidl" --help >/dev/null
+
+          echo "AIDL OK."
+
+      # ============================================================
+      # 10. Install Python-for-Android
+      # ============================================================
+      - name: Install python-for-android
+        run: |
+          python -m pip install \
+            "python-for-android==2024.1.21"
+
+          p4a --version
+
+      # ============================================================
+      # 11. Enter Android project
+      # ============================================================
+      - name: Check Android project
+        working-directory: android
+        run: |
+          echo "Current directory:"
+          pwd
+
+          echo ""
+          echo "Project files:"
+          ls -la
+
+          echo ""
+          echo "buildozer.spec:"
+          test -f buildozer.spec
+
+          echo ""
+          echo "main.py:"
+          test -f main.py
+
+          echo ""
+          echo "Project structure OK."
+
+      # ============================================================
+      # 12. Remove old Buildozer cache
+      # ============================================================
+      - name: Clean Buildozer cache
+        working-directory: android
+        run: |
+          rm -rf .buildozer
+
+          echo "Buildozer cache cleaned."
+
+      # ============================================================
+      # 13. Force Buildozer to use our Android SDK
+      # ============================================================
+      - name: Configure Buildozer SDK
+        working-directory: android
+        run: |
+          mkdir -p .buildozer
+
+          export ANDROID_HOME="$ANDROID_HOME"
+          export ANDROID_SDK_ROOT="$ANDROID_SDK_ROOT"
+
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+
+          echo ""
+          echo "SDK path:"
+          readlink -f "$ANDROID_HOME"
+
+          echo ""
+          echo "AIDL:"
+          readlink -f \
+            "$ANDROID_HOME/build-tools/35.0.0/aidl"
+
+      # ============================================================
+      # 14. Build APK
+      # ============================================================
       - name: Build APK
         working-directory: android
         env:
-          ANDROID_HOME: ${{ env.ANDROID_HOME }}
-          ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
+          ANDROID_HOME: /home/runner/android-sdk
+          ANDROID_SDK_ROOT: /home/runner/android-sdk
         run: |
-          buildozer android clean || true
+          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
+
+          echo "Building IGSaver..."
+
           buildozer android debug
 
+      # ============================================================
+      # 15. Show generated APK
+      # ============================================================
       - name: Find APK
+        working-directory: android
         run: |
-          echo "=== APK RESULT ==="
-          find android/bin -type f -name "*.apk" -print
+          echo "Searching for APK..."
 
-      - name: Upload APK
+          find bin -type f -name "*.apk" -print
+
+          test -n "$(find bin -type f -name '*.apk' -print -quit)"
+
+      # ============================================================
+      # 16. Upload APK
+      # ============================================================
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: IGSaver-APK
           path: android/bin/*.apk
           if-no-files-found: error
+          retention-days: 7
