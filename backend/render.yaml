@@ -1,8 +1,0 @@
-services:
-  - type: web
-    name: igsaver-api
-    env: docker
-    dockerfilePath: ./backend/Dockerfile
-    dockerContext: ./backend
-    plan: free
-    healthCheckPath: /health
