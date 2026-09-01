@@ -1,32 +1,15 @@
-# IGSaver v1.2.1
+# IGSaver v1.2.4
 
-IGSaver is a Kivy Android application for reading public Instagram post/reel pages without asking users for an Instagram Session ID.
+IGSaver adalah aplikasi Android sederhana untuk membaca posting Instagram publik.
 
-## What changed in v1.2.1
-- Removed Session ID from the source and normal user flow.
-- Uses the public Instagram page/embed as the first retrieval route.
-- Uses `certifi` for HTTPS certificate verification.
-- Gives a clear message when Instagram returns HTTP 403/404 instead of telling users to provide a Session ID.
-- Keeps the project small and suitable for GitHub Actions.
+## Perbaikan v1.2.4
+- Menggunakan Instagram oEmbed sebagai jalur utama untuk thumbnail dan judul/caption publik.
+- Fallback ke halaman embed Instagram.
+- Parser metadata diperbaiki agar tidak bergantung pada urutan atribut HTML.
+- Menambahkan fallback JSON-LD dan data caption Instagram.
+- Respons HTTP 200 yang ternyata halaman login/challenge tidak lagi dianggap sukses palsu.
+- Tidak memerlukan Session ID pengguna.
+- Konfigurasi build v1.2.3 yang sudah berhasil dipertahankan.
 
-## Important limitation
-Instagram controls access to its public pages and may return HTTP 403, rate-limit automated requests, or require login depending on the post, account, region, device, and current anti-bot policy. Therefore no standalone client can honestly guarantee that every Instagram URL will work. Private or restricted posts are not supported.
-
-## Build on GitHub
-Push the project to GitHub and run **Actions → Build IGSaver APK → Run workflow**. The generated debug APK is uploaded as the `IGSaver-debug-apk` artifact.
-
-## Normal use
-1. Open IGSaver.
-2. Paste a public Instagram post/reel URL.
-3. Tap **Ambil Posting**.
-4. If Instagram permits public access, the app reads the preview image and available caption.
-
-No Session ID is requested or stored.
-
-
-## Build fix v1.2.3
-This version pins python-for-android to `v2024.1.21`, whose default Python build is 3.11, matching `python3==3.11.9`. The GitHub workflow uses Python 3.11.9 and does not enable Gradle caching because this is a Buildozer/python-for-android project.
-
-
-## v1.2.3 build correction
-p4a uses `p4a.branch = master` with `p4a.commit = 957a3e5`. The release tag is not a branch, so Buildozer can clone master and checkout the exact stable commit.
+## Catatan
+Instagram dapat mengubah endpoint publik, menerapkan rate limit, atau membatasi konten tertentu. Aplikasi hanya mencoba membaca posting yang tersedia secara publik.
