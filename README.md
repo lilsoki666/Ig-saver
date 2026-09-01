@@ -24,5 +24,9 @@ Push the project to GitHub and run **Actions → Build IGSaver APK → Run workf
 No Session ID is requested or stored.
 
 
-## Build fix v1.2.2
+## Build fix v1.2.3
 This version pins python-for-android to `v2024.1.21`, whose default Python build is 3.11, matching `python3==3.11.9`. The GitHub workflow uses Python 3.11.9 and does not enable Gradle caching because this is a Buildozer/python-for-android project.
+
+
+## v1.2.3 build correction
+p4a uses `p4a.branch = master` with `p4a.commit = 957a3e5`. The release tag is not a branch, so Buildozer can clone master and checkout the exact stable commit.
