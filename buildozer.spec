@@ -4,10 +4,10 @@ package.name = igsaver
 package.domain = org.igsaver
 source.dir = .
 source.include_exts = py,kv,png,jpg,jpeg,atlas,txt,json
-version = 1.1.1
+version = 1.2.1
 
 # Keep dependencies minimal and compatible with the pinned p4a release.
-requirements = python3==3.11.9,kivy==2.3.0,plyer,certifi
+requirements = python3==3.11.9,kivy==2.3.0,plyer,requests==2.32.5,urllib3==2.5.0,certifi==2025.8.3
 
 android.api = 35
 android.minapi = 23
@@ -20,10 +20,8 @@ android.permissions = INTERNET,READ_MEDIA_IMAGES,READ_MEDIA_VIDEO,READ_EXTERNAL_
 orientation = portrait
 fullscreen = 0
 
-# Pin python-for-android to the known stable 2024.01.21 commit.
 p4a.fork = kivy
 p4a.branch = master
-p4a.commit = 957a3e5
 
 [buildozer]
 log_level = 2

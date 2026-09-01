@@ -1,53 +1,142 @@
-import threading
-import requests
 import re
+import threading
+from html import unescape
+from io import BytesIO
+from urllib.parse import urljoin
+
+import certifi
+import requests
 from kivy.app import App
 from kivy.clock import Clock
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.textinput import TextInput
-from kivy.uix.button import Button
-from kivy.uix.label import Label
-from kivy.uix.image import Image
 from kivy.core.image import Image as CoreImage
-from io import BytesIO
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.button import Button
+from kivy.uix.image import Image
+from kivy.uix.label import Label
+from kivy.uix.textinput import TextInput
 
-# MASUKKAN SESSION ID INSTAGRAM ANDA DI SINI
-INSTAGRAM_SESSION_ID = "PASTE_SESSION_ID_ANDA_DI_SINI"
+APP_UA = (
+    "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36"
+)
+
+
+def extract_instagram_url(raw_url):
+    """Return a normalized Instagram post/reel URL and shortcode."""
+    raw_url = raw_url.strip()
+    if not re.match(r"^https?://", raw_url, re.I):
+        raw_url = "https://" + raw_url
+
+    match = re.search(
+        r"instagram\.com/(?:p|reel|tv)/([A-Za-z0-9_-]+)",
+        raw_url,
+        re.I,
+    )
+    if not match:
+        return None, None, None
+
+    shortcode = match.group(1)
+    kind_match = re.search(r"instagram\.com/(p|reel|tv)/", raw_url, re.I)
+    kind = kind_match.group(1).lower() if kind_match else "p"
+    normalized = f"https://www.instagram.com/{kind}/{shortcode}/"
+    return normalized, shortcode, kind
+
+
+def meta_content(html, property_name):
+    patterns = [
+        rf'<meta[^>]+property=["\']{re.escape(property_name)}["\'][^>]+content=["\']([^"\']*)["\']',
+        rf'<meta[^>]+content=["\']([^"\']*)["\'][^>]+property=["\']{re.escape(property_name)}["\']',
+        rf'<meta[^>]+name=["\']{re.escape(property_name)}["\'][^>]+content=["\']([^"\']*)["\']',
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, html, re.I)
+        if match:
+            return unescape(match.group(1)).replace("&quot;", '"')
+    return ""
+
+
+def extract_caption(html):
+    # Open Graph description is the most stable public caption source.
+    caption = meta_content(html, "og:description")
+    if caption:
+        # Instagram often formats this as: "... on Instagram: \"caption\""
+        quoted = re.search(r'Instagram:\s*["\'](.+?)["\']\s*$', caption, re.S)
+        if quoted:
+            return quoted.group(1).strip()
+        return caption.strip()
+
+    # Fallback to common JSON fields embedded in the public page.
+    for key in ("edge_media_to_caption", "caption"):
+        match = re.search(
+            rf'"{re.escape(key)}"\s*:\s*\{{.*?"text"\s*:\s*"((?:\\.|[^"\\])*)"',
+            html,
+            re.S,
+        )
+        if match:
+            value = match.group(1)
+            try:
+                return bytes(value, "utf-8").decode("unicode_escape")
+            except Exception:
+                return value.replace("\\n", "\n").replace('\\"', '"')
+    return ""
+
 
 class IGSaverApp(App):
     def build(self):
-        self.title = "IGSaver"
-        
-        main_layout = BoxLayout(orientation='vertical', padding=15, spacing=10)
-        
-        # Header
-        header = Label(text="IGSaver - Simpan Posting", font_size='20sp', bold=True, size_hint_y=None, height=40)
+        self.title = "IGSaver - Simpan Posting"
+        self.session = requests.Session()
+        self.session.headers.update(
+            {
+                "User-Agent": APP_UA,
+                "Accept-Language": "id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Cache-Control": "no-cache",
+            }
+        )
+
+        main_layout = BoxLayout(orientation="vertical", padding=15, spacing=10)
+        header = Label(
+            text="IGSaver - Simpan Posting",
+            font_size="20sp",
+            bold=True,
+            size_hint_y=None,
+            height=40,
+        )
         main_layout.add_widget(header)
-        
-        # Input Link
-        self.link_input = TextInput(hint_text="Tempel link postingan Instagram di sini...", multiline=False, size_hint_y=None, height=45)
+
+        self.link_input = TextInput(
+            hint_text="Tempel link postingan Instagram di sini...",
+            multiline=False,
+            size_hint_y=None,
+            height=45,
+        )
         main_layout.add_widget(self.link_input)
-        
-        # Tombol Aksi
-        btn_layout = BoxLayout(orientation='horizontal', spacing=10, size_hint_y=None, height=45)
+
+        btn_layout = BoxLayout(
+            orientation="horizontal", spacing=10, size_hint_y=None, height=45
+        )
         clear_btn = Button(text="Bersihkan", on_press=self.clear_fields)
-        self.download_btn = Button(text="Download", on_press=self.start_fetch_thread)
+        self.download_btn = Button(text="Ambil Posting", on_press=self.start_fetch_thread)
         btn_layout.add_widget(clear_btn)
         btn_layout.add_widget(self.download_btn)
         main_layout.add_widget(btn_layout)
-        
-        # Status Label
-        self.status_label = Label(text="Masukkan link untuk memulai...", size_hint_y=None, height=30)
+
+        self.status_label = Label(
+            text="Tempel link posting publik untuk memulai.",
+            size_hint_y=None,
+            height=45,
+        )
         main_layout.add_widget(self.status_label)
-        
-        # Area Preview Gambar
-        self.image_preview = Image(source='', allow_stretch=True, keep_ratio=True)
+
+        self.image_preview = Image(source="", allow_stretch=True, keep_ratio=True)
         main_layout.add_widget(self.image_preview)
-        
-        # Caption Area
-        self.caption_input = TextInput(hint_text="Caption akan tampil di sini...", multiline=True, readonly=True)
+
+        self.caption_input = TextInput(
+            hint_text="Caption akan tampil di sini...",
+            multiline=True,
+            readonly=True,
+        )
         main_layout.add_widget(self.caption_input)
-        
         return main_layout
 
     def clear_fields(self, instance):
@@ -56,19 +145,20 @@ class IGSaverApp(App):
         self.status_label.text = "Bersih."
         self.image_preview.texture = None
 
-    def update_ui_success(self, image_data, caption_text):
+    def set_status(self, text):
+        Clock.schedule_once(lambda dt: setattr(self.status_label, "text", text))
+
+    def update_ui_success(self, media_data, caption_text):
         def _update(dt):
             self.download_btn.disabled = False
-            self.status_label.text = "Berhasil mengambil data!"
-            self.caption_input.text = caption_text if caption_text else "Tidak ada caption."
-            
-            if image_data:
+            self.status_label.text = "Berhasil mengambil posting publik."
+            self.caption_input.text = caption_text or "Tidak ada caption yang dapat dibaca."
+            if media_data:
                 try:
-                    buf = BytesIO(image_data)
-                    cim = CoreImage(buf, ext='jpg')
-                    self.image_preview.texture = cim.texture
-                except Exception as e:
-                    self.status_label.text = f"Pratinjau gagal dimuat: {str(e)}"
+                    buf = BytesIO(media_data)
+                    self.image_preview.texture = CoreImage(buf, ext="jpg").texture
+                except Exception as exc:
+                    self.status_label.text = f"Media berhasil diambil, preview gagal: {exc}"
 
         Clock.schedule_once(_update)
 
@@ -76,64 +166,96 @@ class IGSaverApp(App):
         def _update(dt):
             self.download_btn.disabled = False
             self.status_label.text = f"Error: {error_msg}"
+
         Clock.schedule_once(_update)
 
     def start_fetch_thread(self, instance):
         url = self.link_input.text.strip()
         if not url:
-            self.status_label.text = "Harap masukkan URL!"
+            self.status_label.text = "Harap masukkan URL Instagram."
             return
-        
+
+        normalized, shortcode, kind = extract_instagram_url(url)
+        if not normalized:
+            self.status_label.text = "URL Instagram tidak valid."
+            return
+
         self.download_btn.disabled = True
-        self.status_label.text = "Mengambil data postingan..."
-        
-        threading.Thread(target=self.fetch_instagram_data, args=(url,), daemon=True).start()
+        self.status_label.text = "Membaca posting publik..."
+        threading.Thread(
+            target=self.fetch_instagram_data,
+            args=(normalized, shortcode, kind),
+            daemon=True,
+        ).start()
 
-    def fetch_instagram_data(self, url):
+    def fetch_instagram_data(self, normalized_url, shortcode, kind):
         try:
-            # Ekstrak Shortcode
-            match = re.search(r'/(?:p|reel)/([^/?#&]+)', url)
-            if not match:
-                self.update_ui_error("URL Instagram tidak valid.")
+            # We intentionally do NOT require an Instagram session/cookie.
+            # Public embed HTML is the least-privileged route available to a
+            # standalone client. Instagram may still rate-limit or block it.
+            embed_urls = [
+                f"https://www.instagram.com/{kind}/{shortcode}/embed/captioned/",
+                f"https://www.instagram.com/{kind}/{shortcode}/embed/",
+                normalized_url,
+            ]
+
+            last_status = None
+            html = ""
+            for url in embed_urls:
+                try:
+                    response = self.session.get(
+                        url,
+                        timeout=25,
+                        verify=certifi.where(),
+                        allow_redirects=True,
+                    )
+                    last_status = response.status_code
+                    if response.status_code == 200 and response.text:
+                        html = response.text
+                        break
+                except requests.RequestException as exc:
+                    last_status = str(exc)
+
+            if not html:
+                if last_status == 403:
+                    self.update_ui_error(
+                        "Instagram menolak akses publik (HTTP 403). "
+                        "Posting mungkin privat, dibatasi umur/wilayah, atau sedang rate-limit. "
+                        "Aplikasi tidak lagi meminta Session ID."
+                    )
+                elif last_status == 404:
+                    self.update_ui_error("Posting tidak ditemukan (HTTP 404).")
+                else:
+                    self.update_ui_error(f"Gagal membaca posting. Respons: {last_status}")
                 return
-            
-            shortcode = match.group(1)
-            api_url = f"https://i.instagram.com/api/v1/media/{shortcode}/info/"
-            
-            # Header Lengkap dengan Cookie Autentikasi
-            headers = {
-                'User-Agent': 'Instagram 275.0.0.27.98 Android (30/11; 320dpi; 720x1280; Xiaomi; Redmi 9A; dandelion; mt6762; in_ID; 458229447)',
-                'X-IG-App-ID': '936619743392459',
-                'Cookie': f'sessionid={INSTAGRAM_SESSION_ID};'
-            }
 
-            response = requests.get(api_url, headers=headers, timeout=12)
-            
-            if response.status_code == 200:
-                data = response.json()
-                items = data.get('items', [])
-                if items:
-                    item = items[0]
-                    img_url = None
-                    
-                    # Cek Gambar/Video Thumbnail
-                    if 'image_versions2' in item:
-                        img_url = item['image_versions2']['candidates'][0]['url']
-                    
-                    caption = ""
-                    if 'caption' in item and item['caption']:
-                        caption = item['caption'].get('text', '')
+            image_url = meta_content(html, "og:image")
+            video_url = meta_content(html, "og:video")
+            caption = extract_caption(html)
 
-                    if img_url:
-                        img_resp = requests.get(img_url, timeout=10)
-                        if img_resp.status_code == 200:
-                            self.update_ui_success(img_resp.content, caption)
-                            return
+            # Preview the video thumbnail when available. Actual video saving
+            # can be added separately; do not pretend a video URL is an image.
+            preview_url = image_url
+            if not preview_url:
+                self.update_ui_success(None, caption)
+                return
 
-            self.update_ui_error(f"Gagal memuat (HTTP {response.status_code}). Cek Session ID.")
+            media_response = self.session.get(
+                urljoin(normalized_url, preview_url),
+                timeout=30,
+                verify=certifi.where(),
+            )
+            if media_response.status_code != 200:
+                self.update_ui_success(None, caption)
+                return
 
-        except Exception as e:
-            self.update_ui_error(f"Gagal koneksi: {str(e)}")
+            self.update_ui_success(media_response.content, caption)
 
-if __name__ == '__main__':
+        except requests.RequestException as exc:
+            self.update_ui_error(f"Gagal koneksi: {exc}")
+        except Exception as exc:
+            self.update_ui_error(f"Terjadi kesalahan: {exc}")
+
+
+if __name__ == "__main__":
     IGSaverApp().run()
