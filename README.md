@@ -1,15 +1,20 @@
-# IGSaver v1.2.4
+# IGSaver v1.3
 
-IGSaver adalah aplikasi Android sederhana untuk membaca posting Instagram publik.
+## Struktur
+- `android/` — aplikasi Android Kivy
+- `backend/` — API FastAPI
+- `.github/workflows/build-apk.yml` — workflow GitHub Actions
 
-## Perbaikan v1.2.4
-- Menggunakan Instagram oEmbed sebagai jalur utama untuk thumbnail dan judul/caption publik.
-- Fallback ke halaman embed Instagram.
-- Parser metadata diperbaiki agar tidak bergantung pada urutan atribut HTML.
-- Menambahkan fallback JSON-LD dan data caption Instagram.
-- Respons HTTP 200 yang ternyata halaman login/challenge tidak lagi dianggap sukses palsu.
-- Tidak memerlukan Session ID pengguna.
-- Konfigurasi build v1.2.3 yang sudah berhasil dipertahankan.
+## Alur
+1. Pengguna menempel URL posting/reel Instagram publik.
+2. Android mengirim URL ke backend.
+3. Backend mencoba mengambil metadata dan URL media.
+4. Android menampilkan preview + caption.
+5. Pengguna menekan Simpan ke HP.
+6. Media dan caption disimpan ke `Download/IGSaver`.
 
-## Catatan
-Instagram dapat mengubah endpoint publik, menerapkan rate limit, atau membatasi konten tertentu. Aplikasi hanya mencoba membaca posting yang tersedia secara publik.
+## Catatan penting
+Versi ini menghilangkan kebutuhan Session ID dari sisi pengguna. Namun pengambilan konten Instagram publik tetap bergantung pada akses yang tersedia dan dapat berubah sewaktu-waktu. Tidak ada bypass login/challenge.
+
+## Build Android
+Edit URL backend di `android/main.py`, lalu push ke GitHub. Workflow akan membuat APK.
