@@ -1,6 +1,5 @@
 import threading
 import requests
-import json
 import re
 from kivy.app import App
 from kivy.clock import Clock
@@ -58,7 +57,7 @@ class IGSaverApp(App):
         def _update(dt):
             self.download_btn.disabled = False
             self.status_label.text = "Berhasil mengambil data!"
-            self.caption_input.text = caption_text if caption_text else "Tidak ada caption."
+            self.caption_input.text = caption_text if caption_text else "Berhasil mengekstrak media."
             
             if image_data:
                 try:
@@ -66,7 +65,7 @@ class IGSaverApp(App):
                     cim = CoreImage(buf, ext='jpg')
                     self.image_preview.texture = cim.texture
                 except Exception as e:
-                    self.status_label.text = f"Gagal memuat gambar: {str(e)}"
+                    self.status_label.text = f"Pratinjau gagal dimuat: {str(e)}"
 
         Clock.schedule_once(_update)
 
@@ -89,55 +88,42 @@ class IGSaverApp(App):
 
     def fetch_instagram_data(self, url):
         try:
-            match = re.search(r'/(?:p|reel)/([^/?#&]+)', url)
-            if not match:
-                self.update_ui_error("URL Instagram tidak valid.")
-                return
-            
-            shortcode = match.group(1)
-            
-            # Endpoint API 1: Public JSON Proxy
-            api_url = f"https://api.vocal.media/instagram?url=https://www.instagram.com/p/{shortcode}/"
+            # Membersihkan URL
+            clean_url = url.split('?')[0]
+
+            # Panggilan API Cobalt
+            cobalt_api = "https://api.cobalt.tools/api/json"
             headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "User-Agent": "Mozilla/5.0"
+            }
+            payload = {
+                "url": clean_url
             }
 
-            img_url = None
-            caption = ""
+            res = requests.post(cobalt_api, json=payload, headers=headers, timeout=12)
+            
+            if res.status_code == 200:
+                data = res.json()
+                media_url = data.get("url")
+                
+                # Jika postingan berupa slide/carousel
+                if not media_url and "picker" in data:
+                    picker = data.get("picker", [])
+                    if picker:
+                        media_url = picker[0].get("url")
 
-            # Cobaan Metode 1
-            try:
-                res = requests.get(f"https://www.instagram.com/p/{shortcode}/?__a=1&__d=dis", headers=headers, timeout=5)
-                if res.status_code == 200:
-                    jdata = res.json()
-                    item = jdata.get('items', [{}])[0] or jdata.get('graphql', {}).get('shortcode_media', {})
-                    img_url = item.get('display_url') or item.get('image_versions2', {}).get('candidates', [{}])[0].get('url')
-                    caption = item.get('caption', {}).get('text', '') if isinstance(item.get('caption'), dict) else ""
-            except:
-                pass
+                if media_url:
+                    img_resp = requests.get(media_url, timeout=10)
+                    if img_resp.status_code == 200:
+                        self.update_ui_success(img_resp.content, "Media berhasil didapatkan via Cobalt Engine.")
+                        return
 
-            # Cobaan Metode 2 (Pencarian Metadata GraphQL Oembed)
-            if not img_url:
-                try:
-                    oembed_url = f"https://api.instagram.com/oembed/?url=https://www.instagram.com/p/{shortcode}/"
-                    oembed_res = requests.get(oembed_url, headers=headers, timeout=5)
-                    if oembed_res.status_code == 200:
-                        data = oembed_res.json()
-                        img_url = data.get('thumbnail_url')
-                        caption = data.get('title', '')
-                except:
-                    pass
-
-            if img_url:
-                img_resp = requests.get(img_url, timeout=10)
-                if img_resp.status_code == 200:
-                    self.update_ui_success(img_resp.content, caption)
-                    return
-
-            self.update_ui_error("Instagram memblokir akses publik. Coba postingan publik lain.")
+            self.update_ui_error("Gagal mengekstrak media. Pastikan postingan publik.")
 
         except Exception as e:
-            self.update_ui_error(f"Gagal: {str(e)}")
+            self.update_ui_error(f"Gagal koneksi: {str(e)}")
 
 if __name__ == '__main__':
     IGSaverApp().run()
