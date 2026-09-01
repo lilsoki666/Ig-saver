@@ -1,28 +1,24 @@
 [app]
 title = IGSaver
 package.name = igsaver
-package.domain = org.igsaver
+package.domain = com.syauqi
 source.dir = .
-source.include_exts = py,kv,png,jpg,jpeg,atlas,txt,json
-version = 1.2.4
+source.include_exts = py,png,jpg,jpeg,kv,atlas,txt,json
+source.exclude_dirs = .git,.github,.buildozer,bin,__pycache__
 
-# Keep dependencies minimal and compatible with the pinned p4a release.
-requirements = python3==3.11.9,kivy==2.3.0,plyer,requests==2.32.5,urllib3==2.5.0,certifi==2025.8.3
+version = 1.3.0
 
-android.api = 35
-android.minapi = 23
-android.ndk = 25b
-android.accept_sdk_license = True
-android.archs = arm64-v8a
-android.debug_artifact = apk
-android.private_storage = True
-android.permissions = INTERNET,READ_MEDIA_IMAGES,READ_MEDIA_VIDEO,READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE
+requirements = python3,kivy==2.2.1,requests,pyjnius
+
 orientation = portrait
 fullscreen = 0
 
-p4a.fork = kivy
-p4a.branch = master
-p4a.commit = 957a3e5
+android.api = 35
+android.minapi = 23
+android.archs = arm64-v8a
+android.debug_artifact = apk
+android.accept_sdk_license = True
+android.permissions = INTERNET,READ_MEDIA_IMAGES,READ_MEDIA_VIDEO,WRITE_EXTERNAL_STORAGE
 
 [buildozer]
 log_level = 2

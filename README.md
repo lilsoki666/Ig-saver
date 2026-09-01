@@ -1,20 +1,19 @@
-# IGSaver v1.3
+# IGSaver Android v1.3
 
-## Struktur
-- `android/` — aplikasi Android Kivy
-- `backend/` — API FastAPI
-- `.github/workflows/build-apk.yml` — workflow GitHub Actions
+Aplikasi Android Kivy untuk mengambil metadata/media posting Instagram publik melalui backend milik sendiri.
 
-## Alur
-1. Pengguna menempel URL posting/reel Instagram publik.
-2. Android mengirim URL ke backend.
-3. Backend mencoba mengambil metadata dan URL media.
-4. Android menampilkan preview + caption.
-5. Pengguna menekan Simpan ke HP.
-6. Media dan caption disimpan ke `Download/IGSaver`.
+## Penting
+Aplikasi ini **tidak meminta Session ID pengguna** dan tidak mencoba melewati login/challenge Instagram.
 
-## Catatan penting
-Versi ini menghilangkan kebutuhan Session ID dari sisi pengguna. Namun pengambilan konten Instagram publik tetap bergantung pada akses yang tersedia dan dapat berubah sewaktu-waktu. Tidak ada bypass login/challenge.
+Sebelum build, ubah:
+`API_URL = "https://YOUR-BACKEND.example.com"`
+di `main.py` menjadi alamat backend Anda.
 
-## Build Android
-Edit URL backend di `android/main.py`, lalu push ke GitHub. Workflow akan membuat APK.
+Build:
+```bash
+buildozer android debug
+```
+
+APK akan berada di `bin/`.
+
+Catatan: media hanya dapat diambil jika backend berhasil memperoleh media dari posting publik dan Instagram/CDN mengizinkan aksesnya.
