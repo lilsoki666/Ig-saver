@@ -1,4 +1,4 @@
-name: Build IGSaver APK
+name: Build IGSaver APK v1.2.3
 
 on:
   workflow_dispatch:
@@ -48,6 +48,10 @@ jobs:
           buildozer --version
           grep -E '^(title|package.name|version|requirements|android.api|android.minapi|android.ndk|android.archs|orientation)' buildozer.spec
 
+      - name: Clean previous Buildozer state
+        run: |
+          rm -rf .buildozer bin
+
       - name: Build debug APK
         env:
           PIP_DISABLE_PIP_VERSION_CHECK: '1'
@@ -57,6 +61,6 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: IGSaver-debug-apk
+          name: IGSaver-v1.2.3-debug-apk
           path: bin/*.apk
           if-no-files-found: error
