@@ -78,15 +78,18 @@ jobs:
 
       - name: Verify Android SDK
         run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
+           echo "ANDROID_HOME=$ANDROID_HOME"
 
-          sdkmanager --list | head -80
+           test -f "$ANDROID_HOME/build-tools/35.0.0/aidl"
 
-          echo "Checking AIDL..."
-          test -f "$ANDROID_HOME/build-tools/35.0.0/aidl"
+           echo "AIDL found:"
+           ls -lh "$ANDROID_HOME/build-tools/35.0.0/aidl"
 
-          "$ANDROID_HOME/build-tools/35.0.0/aidl" --version
+           echo "AIDL test:"
+           "$ANDROID_HOME/build-tools/35.0.0/aidl" --help >/dev/null
 
+           echo "Android SDK verification completed."
+           
       - name: Install Python build tools
         run: |
           python -m pip install --upgrade pip setuptools wheel
