@@ -1,19 +1,24 @@
-# IGSaver Android v1.3
+# IGSaver API v1.3
 
-Aplikasi Android Kivy untuk mengambil metadata/media posting Instagram publik melalui backend milik sendiri.
+Backend FastAPI yang menerima URL posting/reel Instagram publik dan mencoba memperoleh metadata + media menggunakan yt-dlp.
 
-## Penting
-Aplikasi ini **tidak meminta Session ID pengguna** dan tidak mencoba melewati login/challenge Instagram.
-
-Sebelum build, ubah:
-`API_URL = "https://YOUR-BACKEND.example.com"`
-di `main.py` menjadi alamat backend Anda.
-
-Build:
+Jalankan lokal:
 ```bash
-buildozer android debug
+pip install -r requirements.txt
+uvicorn app:app --host 0.0.0.0 --port 8000
 ```
 
-APK akan berada di `bin/`.
+Tes:
+`GET /health`
 
-Catatan: media hanya dapat diambil jika backend berhasil memperoleh media dari posting publik dan Instagram/CDN mengizinkan aksesnya.
+Endpoint:
+`POST /api/fetch`
+JSON:
+```json
+{"url":"https://www.instagram.com/p/POST_ID/"}
+```
+
+## Batasan
+Tidak ada jaminan semua posting Instagram dapat diekstrak. Instagram dapat mengubah sistem, membatasi IP, meminta login, atau membatasi media tertentu. Backend ini tidak melakukan bypass login/challenge.
+
+Untuk penggunaan produksi, tambahkan rate limit, authentication untuk API milik Anda, logging, timeout, dan validasi URL.
