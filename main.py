@@ -11,6 +11,9 @@ from kivy.uix.image import Image
 from kivy.core.image import Image as CoreImage
 from io import BytesIO
 
+# MASUKKAN SESSION ID INSTAGRAM ANDA DI SINI
+INSTAGRAM_SESSION_ID = "PASTE_SESSION_ID_ANDA_DI_SINI"
+
 class IGSaverApp(App):
     def build(self):
         self.title = "IGSaver"
@@ -57,7 +60,7 @@ class IGSaverApp(App):
         def _update(dt):
             self.download_btn.disabled = False
             self.status_label.text = "Berhasil mengambil data!"
-            self.caption_input.text = caption_text if caption_text else "Berhasil mengekstrak media."
+            self.caption_input.text = caption_text if caption_text else "Tidak ada caption."
             
             if image_data:
                 try:
@@ -88,39 +91,46 @@ class IGSaverApp(App):
 
     def fetch_instagram_data(self, url):
         try:
-            # Membersihkan URL
-            clean_url = url.split('?')[0]
-
-            # Panggilan API Cobalt
-            cobalt_api = "https://api.cobalt.tools/api/json"
-            headers = {
-                "Accept": "application/json",
-                "Content-Type": "application/json",
-                "User-Agent": "Mozilla/5.0"
-            }
-            payload = {
-                "url": clean_url
-            }
-
-            res = requests.post(cobalt_api, json=payload, headers=headers, timeout=12)
+            # Ekstrak Shortcode
+            match = re.search(r'/(?:p|reel)/([^/?#&]+)', url)
+            if not match:
+                self.update_ui_error("URL Instagram tidak valid.")
+                return
             
-            if res.status_code == 200:
-                data = res.json()
-                media_url = data.get("url")
-                
-                # Jika postingan berupa slide/carousel
-                if not media_url and "picker" in data:
-                    picker = data.get("picker", [])
-                    if picker:
-                        media_url = picker[0].get("url")
+            shortcode = match.group(1)
+            api_url = f"https://i.instagram.com/api/v1/media/{shortcode}/info/"
+            
+            # Header Lengkap dengan Cookie Autentikasi
+            headers = {
+                'User-Agent': 'Instagram 275.0.0.27.98 Android (30/11; 320dpi; 720x1280; Xiaomi; Redmi 9A; dandelion; mt6762; in_ID; 458229447)',
+                'X-IG-App-ID': '936619743392459',
+                'Cookie': f'sessionid={INSTAGRAM_SESSION_ID};'
+            }
 
-                if media_url:
-                    img_resp = requests.get(media_url, timeout=10)
-                    if img_resp.status_code == 200:
-                        self.update_ui_success(img_resp.content, "Media berhasil didapatkan via Cobalt Engine.")
-                        return
+            response = requests.get(api_url, headers=headers, timeout=12)
+            
+            if response.status_code == 200:
+                data = response.json()
+                items = data.get('items', [])
+                if items:
+                    item = items[0]
+                    img_url = None
+                    
+                    # Cek Gambar/Video Thumbnail
+                    if 'image_versions2' in item:
+                        img_url = item['image_versions2']['candidates'][0]['url']
+                    
+                    caption = ""
+                    if 'caption' in item and item['caption']:
+                        caption = item['caption'].get('text', '')
 
-            self.update_ui_error("Gagal mengekstrak media. Pastikan postingan publik.")
+                    if img_url:
+                        img_resp = requests.get(img_url, timeout=10)
+                        if img_resp.status_code == 200:
+                            self.update_ui_success(img_resp.content, caption)
+                            return
+
+            self.update_ui_error(f"Gagal memuat (HTTP {response.status_code}). Cek Session ID.")
 
         except Exception as e:
             self.update_ui_error(f"Gagal koneksi: {str(e)}")
