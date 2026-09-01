@@ -30,8 +30,8 @@ class IGSaverApp(App):
         btn_layout = BoxLayout(orientation='horizontal', spacing=10, size_hint_y=None, height=45)
         self.download_btn = Button(text="Download", on_press=self.start_fetch_thread)
         clear_btn = Button(text="Bersihkan", on_press=self.clear_fields)
-        btn_layout.add_widget(self.download_btn)
         btn_layout.add_widget(clear_btn)
+        btn_layout.add_widget(self.download_btn)
         main_layout.add_widget(btn_layout)
         
         # Status Label
@@ -89,7 +89,6 @@ class IGSaverApp(App):
 
     def fetch_instagram_data(self, url):
         try:
-            # Mengambil Shortcode dari URL
             match = re.search(r'/(?:p|reel)/([^/?#&]+)', url)
             if not match:
                 self.update_ui_error("URL Instagram tidak valid.")
@@ -97,34 +96,54 @@ class IGSaverApp(App):
             
             shortcode = match.group(1)
             
-            # Menggunakan API public i.instagram.com (Sangat stabil di mobile)
+            # 1. Metodologi API Android resmi dengan App-ID
             api_url = f"https://i.instagram.com/api/v1/media/{shortcode}/info/"
             headers = {
-                'User-Agent': 'Instagram 275.0.0.27.98 Android (30/11; 320dpi; 720x1280; Xiaomi; Redmi 9A; dandelion; mt6762; in_ID; 458229447)'
+                'User-Agent': 'Instagram 275.0.0.27.98 Android (30/11; 320dpi; 720x1280; Xiaomi; Redmi 9A; dandelion; mt6762; in_ID; 458229447)',
+                'X-IG-App-ID': '936619743392459',
+                'Accept-Language': 'en-US,en;q=0.9',
             }
 
             response = requests.get(api_url, headers=headers, timeout=10)
             
             if response.status_code == 200:
                 data = response.json()
-                items = data.get('items', [])[0]
-                
-                # Mengambil URL Gambar
-                img_url = None
-                if 'image_versions2' in items:
-                    img_url = items['image_versions2']['candidates'][0]['url']
-                
-                # Mengambil Caption
-                caption = ""
-                if 'caption' in items and items['caption']:
-                    caption = items['caption'].get('text', '')
+                items = data.get('items', [])
+                if items:
+                    item = items[0]
+                    img_url = None
+                    if 'image_versions2' in item:
+                        img_url = item['image_versions2']['candidates'][0]['url']
+                    
+                    caption = ""
+                    if 'caption' in item and item['caption']:
+                        caption = item['caption'].get('text', '')
 
-                if img_url:
+                    if img_url:
+                        img_resp = requests.get(img_url, timeout=10)
+                        if img_resp.status_code == 200:
+                            self.update_ui_success(img_resp.content, caption)
+                            return
+
+            # 2. Fallback jika API dibatasi (Parsing Meta OpenGraph)
+            web_url = f"https://www.instagram.com/p/{shortcode}/"
+            web_headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            }
+            web_resp = requests.get(web_url, headers=web_headers, timeout=10)
+            if web_resp.status_code == 200:
+                img_match = re.search(r'<meta property="og:image" content="([^"]+)"', web_resp.text)
+                desc_match = re.search(r'<meta property="og:description" content="([^"]+)"', web_resp.text)
+                
+                if img_match:
+                    img_url = img_match.group(1).replace('&amp;', '&')
+                    caption = desc_match.group(1) if desc_match else ""
+                    
                     img_resp = requests.get(img_url, timeout=10)
                     if img_resp.status_code == 200:
                         self.update_ui_success(img_resp.content, caption)
                         return
-            
+
             self.update_ui_error("Gagal mengambil data dari Instagram.")
 
         except Exception as e:
