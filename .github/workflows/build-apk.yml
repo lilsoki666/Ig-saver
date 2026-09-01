@@ -1,12 +1,9 @@
 name: Build IGSaver APK
 
 on:
-  push:
-    branches: [ main, master ]
   workflow_dispatch:
-
-permissions:
-  contents: read
+  push:
+    branches: [main, master]
 
 jobs:
   build:
@@ -17,80 +14,50 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17 (APT, no Gradle cache)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y openjdk-17-jdk
-          echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> "$GITHUB_ENV"
-          echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> "$GITHUB_PATH"
-          java -version
-          javac -version
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
 
       - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
-          python-version: '3.11.9'
-          cache: 'pip'
+          python-version: '3.11'
+          cache: pip
 
       - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            git zip unzip build-essential ccache \
-            autoconf automake libtool libltdl-dev pkg-config \
-            libffi-dev libssl-dev zlib1g-dev \
-            libncurses5-dev libncursesw5-dev \
-            cmake gettext autopoint \
-            libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
-            libportmidi-dev libswscale-dev libavformat-dev libavcodec-dev
+            build-essential git zip unzip openjdk-17-jdk \
+            libffi-dev libssl-dev libsqlite3-dev \
+            autoconf automake libtool pkg-config \
+            zlib1g-dev libltdl-dev libncurses5-dev \
+            cmake gettext
 
-      - name: Install pinned Python build tools
+      - name: Install Python build tools
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install \
-            "setuptools<69" \
-            "wheel<1" \
-            "cython==0.29.37" \
-            "buildozer==1.5.0"
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install "Cython==0.29.37" "buildozer==1.5.0"
+
+      - name: Verify configuration
+        run: |
+          python --version
+          java -version
           buildozer --version
-          cython --version
+          grep -E '^(title|package.name|version|requirements|android.api|android.minapi|android.ndk|android.archs|orientation)' buildozer.spec
 
-      - name: Verify project configuration
+      - name: Build debug APK
+        env:
+          PIP_DISABLE_PIP_VERSION_CHECK: '1'
         run: |
-          test -f main.py
-          test -f buildozer.spec
-          grep -E '^(requirements|p4a\.branch|p4a\.commit|android\.ndk|android\.archs)' buildozer.spec
-          python -m py_compile main.py
-
-      - name: Clean previous Buildozer state
-        run: |
-          rm -rf .buildozer bin
-
-      - name: Isolate host compiler environment
-        run: |
-          unset CPATH C_INCLUDE_PATH CPLUS_INCLUDE_PATH OBJC_INCLUDE_PATH LIBRARY_PATH
-          unset CFLAGS CXXFLAGS CPPFLAGS LDFLAGS
-          echo "Host compiler environment isolated"
-
-      - name: Build APK (retry transient network failures)
-        run: |
-          for attempt in 1 2 3; do
-            echo "Build attempt $attempt/3"
-            if yes | buildozer -v android debug; then
-              exit 0
-            fi
-            if [ "$attempt" -lt 3 ]; then
-              echo "Build failed; waiting before retry..."
-              rm -rf .buildozer bin
-              sleep $((attempt * 20))
-            fi
-          done
-          exit 1
+          yes | buildozer android debug
 
       - name: Upload APK
-        if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: IGSaver-v1.0.8-apk
+          name: IGSaver-debug-apk
           path: bin/*.apk
           if-no-files-found: error
