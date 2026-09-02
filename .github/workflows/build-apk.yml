@@ -14,11 +14,20 @@ jobs:
     env:
       ANDROID_HOME: /home/runner/.buildozer/android/platform/android-sdk
       ANDROID_SDK_ROOT: /home/runner/.buildozer/android/platform/android-sdk
-      P4A_COMMIT: 957a3e5
 
     steps:
+
+      # ============================================================
+      # CHECKOUT
+      # ============================================================
+
       - name: Checkout repository
         uses: actions/checkout@v4
+
+
+      # ============================================================
+      # JAVA 17
+      # ============================================================
 
       - name: Setup Java 17
         uses: actions/setup-java@v5
@@ -26,59 +35,148 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+
+      # ============================================================
+      # PYTHON 3.11
+      # ============================================================
+
       - name: Setup Python 3.11
         uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
+
+      # ============================================================
+      # SYSTEM DEPENDENCIES
+      # ============================================================
+
       - name: Install system dependencies
         run: |
           sudo apt-get update
+
           sudo apt-get install -y \
-            git zip unzip wget curl build-essential autoconf automake libtool \
-            pkg-config libltdl-dev libffi-dev libssl-dev zlib1g-dev \
-            libncurses5-dev libncursesw5-dev cmake ninja-build ccache
+            git \
+            zip \
+            unzip \
+            wget \
+            curl \
+            build-essential \
+            autoconf \
+            automake \
+            libtool \
+            pkg-config \
+            libltdl-dev \
+            libffi-dev \
+            libssl-dev \
+            zlib1g-dev \
+            libncurses5-dev \
+            libncursesw5-dev \
+            cmake \
+            ninja-build \
+            ccache
+
+
+      # ============================================================
+      # PYTHON BUILD TOOLS
+      # ============================================================
 
       - name: Install Python build tools
         run: |
-          python -m pip install --upgrade pip setuptools wheel
-          python -m pip install "Cython==0.29.37" "buildozer==1.5.0"
+          python -m pip install --upgrade \
+            pip \
+            setuptools \
+            wheel
+
+          python -m pip install \
+            "Cython==0.29.37" \
+            "buildozer==1.5.0"
+
+          echo ""
+          echo "=========================================="
+          echo "PYTHON"
+          echo "=========================================="
 
           python --version
+
+          echo ""
+          echo "=========================================="
+          echo "CYTHON"
+          echo "=========================================="
+
           cython --version
+
+          echo ""
+          echo "=========================================="
+          echo "BUILDOZER"
+          echo "=========================================="
+
           buildozer --version
 
-      - name: Prepare Buildozer SDK
+
+      # ============================================================
+      # PREPARE BUILDOZER SDK
+      # ============================================================
+
+      - name: Prepare Buildozer SDK directory
         run: |
           SDK="$HOME/.buildozer/android/platform/android-sdk"
+
+          mkdir -p "$SDK"
           mkdir -p "$SDK/cmdline-tools"
+
+
+      # ============================================================
+      # INSTALL ANDROID COMMAND LINE TOOLS
+      # ============================================================
 
       - name: Install Android command line tools
         run: |
           SDK="$HOME/.buildozer/android/platform/android-sdk"
 
           cd /tmp
-          rm -rf cmdline-tools commandlinetools.zip
+
+          rm -rf cmdline-tools
+          rm -f commandlinetools.zip
+
+          echo "Downloading Android command line tools..."
 
           wget -q \
             https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip \
             -O commandlinetools.zip
 
+          echo "Extracting..."
+
           unzip -q commandlinetools.zip
+
           rm -rf "$SDK/cmdline-tools"
+
           mkdir -p "$SDK/cmdline-tools"
-          mv cmdline-tools "$SDK/cmdline-tools/latest"
+
+          mv \
+            cmdline-tools \
+            "$SDK/cmdline-tools/latest"
 
           echo "$SDK/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
           echo "$SDK/platform-tools" >> "$GITHUB_PATH"
 
+          echo ""
+          echo "=========================================="
+          echo "MODERN SDKMANAGER"
+          echo "=========================================="
+
           "$SDK/cmdline-tools/latest/bin/sdkmanager" --version
 
-      - name: Create Buildozer sdkmanager wrapper
+
+      # ============================================================
+      # BUILDOZER SDKMANAGER COMPATIBILITY
+      # ============================================================
+
+      - name: Create Buildozer sdkmanager compatibility wrapper
         run: |
           SDK="$HOME/.buildozer/android/platform/android-sdk"
 
           rm -rf "$SDK/tools"
+
           mkdir -p "$SDK/tools/bin"
 
           cat > "$SDK/tools/bin/sdkmanager" <<'EOF'
@@ -89,12 +187,29 @@ jobs:
 
           chmod +x "$SDK/tools/bin/sdkmanager"
 
+          echo "Wrapper created:"
           "$SDK/tools/bin/sdkmanager" --version
+
+
+      # ============================================================
+      # ACCEPT SDK LICENSES
+      # ============================================================
 
       - name: Accept Android SDK licenses
         run: |
           SDK="$HOME/.buildozer/android/platform/android-sdk"
-          yes | "$SDK/tools/bin/sdkmanager" --licenses >/dev/null 2>&1 || true
+
+          yes | \
+            "$SDK/tools/bin/sdkmanager" \
+            --licenses \
+            >/dev/null 2>&1 || true
+
+          echo "Android SDK licenses processed."
+
+
+      # ============================================================
+      # INSTALL ANDROID SDK
+      # ============================================================
 
       - name: Install Android SDK packages
         run: |
@@ -105,85 +220,141 @@ jobs:
             "platforms;android-35" \
             "build-tools;35.0.0"
 
-          "$SDK/tools/bin/sdkmanager" --list_installed
+          echo ""
+          echo "Installed packages:"
 
-      - name: Verify AIDL and SDK
+          "$SDK/tools/bin/sdkmanager" \
+            --list_installed
+
+
+      # ============================================================
+      # VERIFY AIDL
+      # ============================================================
+
+      - name: Verify AIDL
         run: |
           SDK="$HOME/.buildozer/android/platform/android-sdk"
 
-          test -x "$SDK/tools/bin/sdkmanager"
-          "$SDK/tools/bin/sdkmanager" --version
+          echo ""
+          echo "=========================================="
+          echo "AIDL VERIFICATION"
+          echo "=========================================="
 
-          test -f "$SDK/build-tools/35.0.0/aidl"
-          "$SDK/build-tools/35.0.0/aidl" --help >/dev/null
+          find "$SDK" \
+            -type f \
+            -name aidl \
+            -print
 
-          test -d "$SDK/platforms/android-35"
-          test -d "$SDK/build-tools/35.0.0"
+          test -f \
+            "$SDK/build-tools/35.0.0/aidl"
 
-          echo "Android SDK/AIDL OK."
+          "$SDK/build-tools/35.0.0/aidl" \
+            --help \
+            >/dev/null
+
+          echo "AIDL OK."
+
+
+      # ============================================================
+      # VERIFY PROJECT
+      # ============================================================
 
       - name: Verify Android project
         working-directory: android
         run: |
+          echo ""
+          echo "=========================================="
+          echo "IGSAVER PROJECT"
+          echo "=========================================="
+
+          pwd
+
+          ls -la
+
           test -f buildozer.spec
           test -f main.py
+
           echo "Android project OK."
 
-      - name: Pre-seed pinned python-for-android
-        working-directory: android
-        run: |
-          P4A_DIR="$HOME/.buildozer/android/platform/python-for-android"
 
-          rm -rf "$P4A_DIR"
-          git clone --depth 1 https://github.com/kivy/python-for-android.git "$P4A_DIR"
-          cd "$P4A_DIR"
-          git fetch --depth 1 origin "$P4A_COMMIT"
-          git checkout "$P4A_COMMIT"
-
-          echo "Pinned p4a commit:"
-          git rev-parse HEAD
-          git log -1 --oneline
-
-          test "$(git rev-parse HEAD)" = "$P4A_COMMIT"
+      # ============================================================
+      # BUILD APK
+      # ============================================================
 
       - name: Build APK
         working-directory: android
         env:
           ANDROID_HOME: /home/runner/.buildozer/android/platform/android-sdk
           ANDROID_SDK_ROOT: /home/runner/.buildozer/android/platform/android-sdk
+
         run: |
           export PATH="$HOME/.local/bin:$ANDROID_HOME/tools/bin:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
 
+          echo ""
+          echo "=========================================="
+          echo "BUILDING IGSAVER APK"
+          echo "=========================================="
+
+          echo ""
           echo "Python:"
           python --version
 
+          echo ""
           echo "Cython:"
           cython --version
 
+          echo ""
           echo "Buildozer:"
           buildozer --version
 
+          echo ""
           echo "sdkmanager:"
           "$ANDROID_HOME/tools/bin/sdkmanager" --version
 
+          echo ""
           echo "AIDL:"
           "$ANDROID_HOME/build-tools/35.0.0/aidl" --help >/dev/null
 
-          echo "Building with pinned p4a commit: $P4A_COMMIT"
+          echo ""
+          echo "Starting Buildozer..."
+          echo ""
 
           buildozer android debug
+
+
+      # ============================================================
+      # FIND APK
+      # ============================================================
 
       - name: Find APK
         working-directory: android
         run: |
+          echo ""
+          echo "=========================================="
+          echo "SEARCHING FOR APK"
+          echo "=========================================="
+
+          find bin \
+            -type f \
+            -name "*.apk" \
+            -print
+
           APK="$(find bin -type f -name '*.apk' -print -quit)"
 
           if [ -z "$APK" ]; then
+            echo ""
             echo "ERROR: APK was not generated."
             exit 1
           fi
 
-          echo "APK successfully generated: $APK"
+          echo ""
+          echo "APK successfully generated:"
+          echo "$APK"
+
+
+      # ============================================================
+      # UPLOAD APK
+      # ============================================================
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
