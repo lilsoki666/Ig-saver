@@ -25,4 +25,10 @@ android.archs = arm64-v8a
 android.debug_artifact = apk
 android.accept_sdk_license = True
 
-p4a.branch = 2024.1.21
+p4a.branch = master
+p4a.commit = 957a3e5
+
+[buildozer]
+
+log_level = 2
+warn_on_root = 1
