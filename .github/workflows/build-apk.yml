@@ -12,38 +12,42 @@ jobs:
     runs-on: ubuntu-22.04
 
     env:
-      ANDROID_HOME: /home/runner/android-sdk
-      ANDROID_SDK_ROOT: /home/runner/android-sdk
+      # ==========================================================
+      # IMPORTANT:
+      # Use the same SDK location that Buildozer/python-for-android
+      # will use.
+      # ==========================================================
+      ANDROID_HOME: /home/runner/.buildozer/android/platform/android-sdk
+      ANDROID_SDK_ROOT: /home/runner/.buildozer/android/platform/android-sdk
 
     steps:
 
-      # ============================================================
-      # 1. Checkout
-      # ============================================================
+      # ==========================================================
+      # 1. CHECKOUT
+      # ==========================================================
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ============================================================
-      # 2. Java 17
-      # ============================================================
+      # ==========================================================
+      # 2. JAVA 17
+      # ==========================================================
       - name: Setup Java 17
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
 
-      # ============================================================
-      # 3. Python 3.11
-      # ============================================================
+      # ==========================================================
+      # 3. PYTHON 3.11
+      # ==========================================================
       - name: Setup Python 3.11
         uses: actions/setup-python@v6
         with:
           python-version: "3.11"
-          cache: pip
 
-      # ============================================================
-      # 4. System dependencies
-      # ============================================================
+      # ==========================================================
+      # 4. SYSTEM DEPENDENCIES
+      # ==========================================================
       - name: Install system dependencies
         run: |
           sudo apt-get update
@@ -69,26 +73,10 @@ jobs:
             ninja-build \
             ccache
 
-      # ============================================================
-      # 5. Verify Java / Python
-      # ============================================================
-      - name: Verify Java and Python
-        run: |
-          echo "Java:"
-          java -version
-
-          echo ""
-          echo "Python:"
-          python --version
-
-          echo ""
-          echo "Pip:"
-          pip --version
-
-      # ============================================================
-      # 6. Install Buildozer
-      # ============================================================
-      - name: Install Build tools
+      # ==========================================================
+      # 5. PYTHON BUILD TOOLS
+      # ==========================================================
+      - name: Install Python build tools
         run: |
           python -m pip install --upgrade \
             pip \
@@ -100,25 +88,57 @@ jobs:
             "buildozer==1.5.0"
 
           echo ""
-          echo "Python:"
+          echo "=========================================="
+          echo "PYTHON"
+          echo "=========================================="
+
+          which python
           python --version
 
           echo ""
-          echo "Cython:"
+          echo "=========================================="
+          echo "CYTHON"
+          echo "=========================================="
+
+          python -m pip show Cython
           cython --version
 
           echo ""
-          echo "Buildozer:"
+          echo "=========================================="
+          echo "BUILDOZER"
+          echo "=========================================="
+
+          which buildozer
           buildozer --version
 
-      # ============================================================
-      # 7. Install Android command line tools
-      # ============================================================
-      - name: Install Android SDK
+      # ==========================================================
+      # 6. PREPARE BUILDOZER SDK DIRECTORY
+      # ==========================================================
+      - name: Prepare Buildozer SDK directory
         run: |
-          mkdir -p "$ANDROID_HOME/cmdline-tools"
+          SDK="$HOME/.buildozer/android/platform/android-sdk"
+
+          mkdir -p "$SDK"
+          mkdir -p "$SDK/cmdline-tools"
+
+          echo "Buildozer SDK:"
+          echo "$SDK"
+
+          echo ""
+          echo "Directory:"
+          ls -la "$HOME/.buildozer/android/platform"
+
+      # ==========================================================
+      # 7. INSTALL ANDROID COMMAND LINE TOOLS
+      # ==========================================================
+      - name: Install Android command line tools
+        run: |
+          SDK="$HOME/.buildozer/android/platform/android-sdk"
 
           cd /tmp
+
+          rm -rf cmdline-tools
+          rm -f commandlinetools.zip
 
           wget -q \
             https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip \
@@ -126,28 +146,47 @@ jobs:
 
           unzip -q commandlinetools.zip
 
-          mkdir -p "$ANDROID_HOME/cmdline-tools/latest"
+          mkdir -p "$SDK/cmdline-tools/latest"
 
-          mv cmdline-tools/* \
-            "$ANDROID_HOME/cmdline-tools/latest/"
+          cp -r cmdline-tools/* \
+            "$SDK/cmdline-tools/latest/"
 
-          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
-          echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
+          echo "$SDK/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+          echo "$SDK/platform-tools" >> "$GITHUB_PATH"
 
-          echo "Android command line tools installed."
+          echo ""
+          echo "=========================================="
+          echo "ANDROID COMMAND LINE TOOLS"
+          echo "=========================================="
 
-      # ============================================================
-      # 8. Accept SDK licenses
-      # ============================================================
+          ls -la "$SDK/cmdline-tools/latest"
+
+      # ==========================================================
+      # 8. VERIFY SDKMANAGER
+      # ==========================================================
+      - name: Verify sdkmanager
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+
+          echo ""
+          echo "sdkmanager:"
+          which sdkmanager
+
+          sdkmanager --version
+
+      # ==========================================================
+      # 9. ACCEPT ANDROID LICENSES
+      # ==========================================================
       - name: Accept Android SDK licenses
         run: |
           yes | sdkmanager --licenses >/dev/null 2>&1 || true
 
           echo "Android SDK licenses processed."
 
-      # ============================================================
-      # 9. Install exact Android SDK packages
-      # ============================================================
+      # ==========================================================
+      # 10. INSTALL EXACT ANDROID SDK PACKAGES
+      # ==========================================================
       - name: Install Android SDK packages
         run: |
           sdkmanager \
@@ -156,127 +195,259 @@ jobs:
             "build-tools;35.0.0"
 
           echo ""
-          echo "Installed Android packages:"
+          echo "=========================================="
+          echo "INSTALLED ANDROID PACKAGES"
+          echo "=========================================="
+
           sdkmanager --list_installed
 
-      # ============================================================
-      # 10. Verify Android SDK and AIDL
-      # ============================================================
-      - name: Verify Android SDK
+      # ==========================================================
+      # 11. VERIFY AIDL
+      # ==========================================================
+      - name: Verify AIDL
         run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+          SDK="$ANDROID_HOME"
 
           echo ""
-          echo "Android SDK directory:"
+          echo "=========================================="
+          echo "VERIFY AIDL"
+          echo "=========================================="
+
+          echo "SDK:"
+          echo "$SDK"
+
+          echo ""
+          echo "Build Tools:"
+          ls -la "$SDK/build-tools/35.0.0"
+
+          echo ""
+          echo "AIDL file:"
+
+          test -f \
+            "$SDK/build-tools/35.0.0/aidl"
+
+          ls -lh \
+            "$SDK/build-tools/35.0.0/aidl"
+
+          echo ""
+          echo "AIDL help test:"
+
+          "$SDK/build-tools/35.0.0/aidl" --help >/dev/null
+
+          echo ""
+          echo "AIDL OK."
+
+      # ==========================================================
+      # 12. VERIFY COMPLETE SDK STRUCTURE
+      # ==========================================================
+      - name: Verify complete Android SDK
+        run: |
+          echo ""
+          echo "=========================================="
+          echo "ANDROID SDK STRUCTURE"
+          echo "=========================================="
+
+          echo ""
+          echo "SDK root:"
           ls -la "$ANDROID_HOME"
 
           echo ""
           echo "Build Tools:"
-          ls -la "$ANDROID_HOME/build-tools/35.0.0"
+          ls -la "$ANDROID_HOME/build-tools"
 
           echo ""
-          echo "Checking AIDL..."
+          echo "Platform:"
+          ls -la "$ANDROID_HOME/platforms"
 
-          test -f \
-            "$ANDROID_HOME/build-tools/35.0.0/aidl"
+          echo ""
+          echo "Platform Tools:"
+          ls -la "$ANDROID_HOME/platform-tools"
 
-          "$ANDROID_HOME/build-tools/35.0.0/aidl" --help >/dev/null
+          echo ""
+          echo "AIDL:"
+          find "$ANDROID_HOME" \
+            -type f \
+            -name aidl \
+            -print
 
-          echo "AIDL OK."
-
-      # ============================================================
-      # 11. Verify project structure
-      # ============================================================
+      # ==========================================================
+      # 13. VERIFY PROJECT STRUCTURE
+      # ==========================================================
       - name: Verify Android project
         working-directory: android
         run: |
-          echo "Project directory:"
+          echo ""
+          echo "=========================================="
+          echo "IGSAVER PROJECT"
+          echo "=========================================="
+
+          echo ""
+          echo "Current directory:"
           pwd
 
           echo ""
-          echo "Files:"
+          echo "Project files:"
           ls -la
 
           echo ""
           echo "Checking buildozer.spec..."
+
           test -f buildozer.spec
 
           echo ""
           echo "Checking main.py..."
+
           test -f main.py
 
           echo ""
-          echo "Android project OK."
+          echo "Project structure OK."
 
-      # ============================================================
-      # 12. Install python-for-android
-      # ============================================================
+      # ==========================================================
+      # 14. INSTALL PYTHON-FOR-ANDROID
+      # ==========================================================
       - name: Install python-for-android
         run: |
           python -m pip install \
             "python-for-android==2024.1.21"
 
           echo ""
-          echo "python-for-android:"
+          echo "=========================================="
+          echo "PYTHON-FOR-ANDROID"
+          echo "=========================================="
+
+          which p4a
           p4a --version
 
-      # ============================================================
-      # 13. Clean Buildozer
-      # ============================================================
+      # ==========================================================
+      # 15. CLEAN OLD BUILDOZER CACHE
+      # ==========================================================
       - name: Clean Buildozer cache
         working-directory: android
         run: |
           rm -rf .buildozer
 
-          echo "Buildozer cache cleaned."
+          echo "Buildozer project cache cleaned."
 
-      # ============================================================
-      # 14. Configure Android environment
-      # ============================================================
-      - name: Configure Android environment
+      # ==========================================================
+      # 16. VERIFY AIDL AT BUILDOZER LOCATION
+      # ==========================================================
+      - name: Verify AIDL at Buildozer location
+        run: |
+          echo ""
+          echo "=========================================="
+          echo "FINAL AIDL CHECK"
+          echo "=========================================="
+
+          echo "ANDROID_HOME:"
+          echo "$ANDROID_HOME"
+
+          echo ""
+          echo "Searching for AIDL:"
+
+          find "$ANDROID_HOME" \
+            -type f \
+            -name aidl \
+            -print
+
+          echo ""
+          echo "Expected AIDL:"
+
+          test -f \
+            "$ANDROID_HOME/build-tools/35.0.0/aidl"
+
+          echo ""
+          echo "AIDL path:"
+
+          readlink -f \
+            "$ANDROID_HOME/build-tools/35.0.0/aidl"
+
+          echo ""
+          echo "Testing AIDL:"
+
+          "$ANDROID_HOME/build-tools/35.0.0/aidl" --help >/dev/null
+
+          echo ""
+          echo "FINAL AIDL CHECK PASSED."
+
+      # ==========================================================
+      # 17. CONFIGURE BUILD ENVIRONMENT
+      # ==========================================================
+      - name: Configure Build environment
         working-directory: android
         run: |
-          export ANDROID_HOME=/home/runner/android-sdk
-          export ANDROID_SDK_ROOT=/home/runner/android-sdk
+          export ANDROID_HOME="$HOME/.buildozer/android/platform/android-sdk"
+          export ANDROID_SDK_ROOT="$HOME/.buildozer/android/platform/android-sdk"
 
           export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
+
+          echo ""
+          echo "=========================================="
+          echo "BUILD ENVIRONMENT"
+          echo "=========================================="
 
           echo "ANDROID_HOME=$ANDROID_HOME"
           echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
 
           echo ""
-          echo "AIDL path:"
+          echo "Python:"
+          which python
+          python --version
+
+          echo ""
+          echo "Cython:"
+          which cython
+          cython --version
+
+          echo ""
+          echo "Buildozer:"
+          which buildozer
+          buildozer --version
+
+          echo ""
+          echo "AIDL:"
           readlink -f \
             "$ANDROID_HOME/build-tools/35.0.0/aidl"
 
-          echo ""
-          echo "Environment configured."
-
-      # ============================================================
-      # 15. Build APK
-      # ============================================================
+      # ==========================================================
+      # 18. BUILD APK
+      # ==========================================================
       - name: Build APK
         working-directory: android
         env:
-          ANDROID_HOME: /home/runner/android-sdk
-          ANDROID_SDK_ROOT: /home/runner/android-sdk
+          ANDROID_HOME: /home/runner/.buildozer/android/platform/android-sdk
+          ANDROID_SDK_ROOT: /home/runner/.buildozer/android/platform/android-sdk
         run: |
-          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
+          export PATH="$HOME/.local/bin:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
 
+          echo ""
           echo "=========================================="
-          echo "        BUILDING IGSAVER APK"
+          echo "          BUILDING IGSAVER APK"
           echo "=========================================="
+
+          echo ""
+          echo "Android SDK:"
+          echo "$ANDROID_HOME"
+
+          echo ""
+          echo "AIDL:"
+          test -f \
+            "$ANDROID_HOME/build-tools/35.0.0/aidl"
+
+          echo ""
+          echo "Starting Buildozer..."
 
           buildozer android debug
 
-      # ============================================================
-      # 16. Find APK
-      # ============================================================
+      # ==========================================================
+      # 19. FIND APK
+      # ==========================================================
       - name: Find APK
         working-directory: android
         run: |
-          echo "Searching generated APK..."
+          echo ""
+          echo "=========================================="
+          echo "SEARCHING FOR APK"
+          echo "=========================================="
 
           find bin \
             -type f \
@@ -286,17 +457,18 @@ jobs:
           APK="$(find bin -type f -name '*.apk' -print -quit)"
 
           if [ -z "$APK" ]; then
+            echo ""
             echo "ERROR: APK was not generated."
             exit 1
           fi
 
           echo ""
-          echo "APK generated successfully:"
+          echo "APK successfully generated:"
           echo "$APK"
 
-      # ============================================================
-      # 17. Upload APK artifact
-      # ============================================================
+      # ==========================================================
+      # 20. UPLOAD APK
+      # ==========================================================
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
