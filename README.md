@@ -21,3 +21,11 @@ Gunakan hanya untuk konten yang memang berhak Anda simpan dan patuhi ketentuan I
 Push seluruh project ke branch `main`, buka tab **Actions**, jalankan workflow **Build IGSaver APK**, lalu ambil artifact `IGSaver-debug-apk`.
 
 Konfigurasi utama ada di `android/buildozer.spec`. Python target dikunci ke 3.11.9 dan Kivy ke 2.3.0 untuk menghindari kegagalan kompilasi yang sebelumnya muncul dengan Python 3.14.
+
+
+## Build v3
+
+- Android API 33 / NDK 25b untuk kompatibilitas Kivy 2.3.0 yang lebih konservatif.
+- Python 3.11.9.
+- `pyjnius` tidak dicantumkan sebagai pip requirement; akses JNI tetap memakai `jnius` yang disediakan toolchain Android/Kivy.
+- Tidak ada backend/API milik sendiri.

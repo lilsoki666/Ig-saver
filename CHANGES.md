@@ -1,3 +1,8 @@
+## 3.0.0
+- Menyesuaikan Android API 33 dan NDK 25b untuk menghindari error clang/Kivy pada NDK 28.
+- Menghapus `pyjnius` dari requirements Buildozer.
+- Menghapus request permission Android lama dari runtime.
+
 # Changes
 
 ## 2.0.0
