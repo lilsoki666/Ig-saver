@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-__version__ = "2.0.0"
+__version__ = "3.0.0"
 
 import datetime
 import mimetypes
@@ -294,9 +294,6 @@ class IGSaverApp(App):
         self.save_caption_btn.disabled = True
         save_row.add_widget(self.save_caption_btn)
         root.add_widget(save_row)
-
-        if platform == "android":
-            Clock.schedule_once(lambda _dt: self._request_legacy_storage_if_needed(), 0.5)
 
         return root
 
