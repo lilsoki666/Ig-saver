@@ -1,8 +1,13 @@
-# IGSaver build fixes
+# Changes
 
-- Removed invalid `p4a.branch = 2024.1.21`.
-- Removed redundant pip installation of python-for-android.
-- Pins python-for-android to commit `957a3e5`.
-- Keeps Ubuntu 22.04, Java 17, Python 3.11, Cython 0.29.37, SDK 35 and Build Tools 35.0.0.
-- Keeps the Buildozer sdkmanager compatibility wrapper.
-- Verifies AIDL before the build.
+## 2.0.0
+
+- Menghapus ketergantungan backend FastAPI sepenuhnya.
+- Ekstraksi Instagram dilakukan langsung di APK menggunakan yt-dlp.
+- Menambahkan fallback OpenGraph untuk posting publik tertentu.
+- Mendukung beberapa media yang dikembalikan extractor.
+- Menghindari format yt-dlp yang membutuhkan FFmpeg merge.
+- Penyimpanan Android 10+ menggunakan MediaStore ke Download/IGSaver.
+- Android 9 dan lebih lama memakai WRITE_EXTERNAL_STORAGE sebagai fallback.
+- Python Android dikunci ke 3.11.9 dan Kivy 2.3.0.
+- yt-dlp dikunci ke 2026.8.19.
