@@ -29,3 +29,6 @@ Konfigurasi utama ada di `android/buildozer.spec`. Python target dikunci ke 3.11
 - Python 3.11.9.
 - `pyjnius` tidak dicantumkan sebagai pip requirement; akses JNI tetap memakai `jnius` yang disediakan toolchain Android/Kivy.
 - Tidak ada backend/API milik sendiri.
+
+## Build note
+The CI pins `python-for-android==2024.01.21` because the current p4a master recipe uses Python 3.14.2, which conflicts with this Kivy 2.3.0 / Python 3.11 build. The 2024.01.21 release explicitly added Python 3.11 support.
