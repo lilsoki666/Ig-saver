@@ -7,7 +7,7 @@ package.domain = com.syauqi
 source.dir = .
 source.include_exts = py,png,jpg,jpeg,kv,atlas
 
-version = 3.0.0
+version = 4.0.0
 
 # yt-dlp is pure Python and runs inside the APK. No custom backend/API is required.
 requirements = python3==3.11.9,kivy==2.3.0,requests,certifi,yt-dlp==2026.8.19
@@ -31,5 +31,5 @@ android.accept_sdk_license = True
 log_level = 2
 warn_on_root = 1
 
-# Keep python-for-android on the stable branch compatible with Python 3.11.
-p4a.branch = master
+# python-for-android is pinned by the GitHub Actions workflow to the 2024.01.21 release,
+# which supports Python 3.11 as its default recipe.
